@@ -3,7 +3,7 @@ package org.example
 import java.io.File
 
 fun main() {
-    val wordsFile: File = File("words.txt")
+    val wordsFile = File("words.txt")
     if (!wordsFile.exists()) {
         println("Файл 'words.txt' не найден!")
         return
