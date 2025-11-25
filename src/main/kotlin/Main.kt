@@ -4,7 +4,10 @@ import java.io.File
 
 fun main() {
     val wordsFile: File = File("words.txt")
-    wordsFile.createNewFile()
-    for (file in wordsFile.readLines())
-        println(file)
+    if (!wordsFile.exists()) {
+        println("Файл 'words.txt' не найден!")
+        return
+    }
+    for (line in wordsFile.readLines())
+        println(line)
 }
