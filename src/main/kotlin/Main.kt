@@ -8,6 +8,19 @@ fun main() {
         println("Файл 'words.txt' не найден!")
         return
     }
-    for (line in wordsFile.readLines())
-        println(line)
+    val lines: List<String> = wordsFile.readLines()
+
+    val dictionary = mutableListOf<Word>()
+
+    for (line in lines) {
+        val split = line.split("|")
+
+        val word = Word(original = split[0].trim(), translation = split[1].trim())
+
+        if (word.correctAnswersCount == null) {
+            word.correctAnswersCount = 0
+        }
+        dictionary.add(word)
+    }
+    println(dictionary)
 }
