@@ -15,11 +15,11 @@ fun main() {
     for (line in lines) {
         val split = line.split("|")
 
-        val word = Word(original = split[0].trim(), translation = split[1].trim())
-
-        if (word.correctAnswersCount == null) {
-            word.correctAnswersCount = 0
-        }
+        val word = Word(
+            original = split[0].trim(),
+            translation = split[1].trim(),
+            split[2].toIntOrNull() ?: 0
+        )
         dictionary.add(word)
     }
     println(dictionary)
