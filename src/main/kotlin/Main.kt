@@ -20,6 +20,7 @@ fun main() {
                 val learnCount = listLearnCount.size
                 val percent = ((learnCount / totalCount) * MAX_PERCENTAGE).toString()
                 println("Выучено $learnCount из $totalCount слов | $percent%")
+                println()
             }
 
             "0" -> {
