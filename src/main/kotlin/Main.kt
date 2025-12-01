@@ -13,15 +13,15 @@ fun main() {
         )
         val userInput = readln().trim()
         when (userInput) {
-            "1" -> println("Выбран пункт меня 'Учить слова'")
-            "2" -> println("Выбран пункт меня 'Статистика'")
+            "1" -> println("Выбран пункт меню 'Учить слова'")
+            "2" -> println("Выбран пункт меню 'Статистика'")
             "0" -> {
                 println("Выход из программы")
-                break
+                return
             }
 
             else -> {
-                println("Введите '1','2' или '3'")
+                println("Введите '1','2' или '0'")
                 continue
             }
         }
