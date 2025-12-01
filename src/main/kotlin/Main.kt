@@ -14,7 +14,14 @@ fun main() {
         val userInput = readln().trim()
         when (userInput) {
             "1" -> println("Выбран пункт меню 'Учить слова'")
-            "2" -> println("Выбран пункт меню 'Статистика'")
+            "2" -> {
+                val totalCount = dictionary.size
+                val listLearnCount = dictionary.filter { it.correctAnswersCount >= NEED_COUNT_TO_LEARN }
+                val learnCount = listLearnCount.size
+                val percent = ((learnCount / totalCount) * MAX_PERCENTAGE).toString()
+                println("Выучено $learnCount из $totalCount | $percent %")
+            }
+
             "0" -> {
                 println("Выход из программы")
                 return
@@ -51,3 +58,6 @@ fun loadDictionary(): MutableList<Word> {
     }
     return dictionary
 }
+
+const val NEED_COUNT_TO_LEARN = 3
+const val MAX_PERCENTAGE = 100
