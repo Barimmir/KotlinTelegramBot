@@ -19,7 +19,7 @@ fun main() {
                 val listLearnCount = dictionary.filter { it.correctAnswersCount >= NEED_COUNT_TO_LEARN }
                 val learnCount = listLearnCount.size
                 val percent = ((learnCount / totalCount) * MAX_PERCENTAGE).toString()
-                println("Выучено $learnCount из $totalCount | $percent %")
+                println("Выучено $learnCount из $totalCount слов | $percent%")
             }
 
             "0" -> {
