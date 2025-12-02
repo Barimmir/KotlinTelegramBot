@@ -11,9 +11,30 @@ fun main() {
                     "2 - Статистика\n" +
                     "0 - Выход"
         )
-        val userInput = readln().trim()
-        when (userInput) {
-            "1" -> println("Выбран пункт меню 'Учить слова'")
+        val userInputMenu = readln().trim()
+        when (userInputMenu) {
+            "1" -> {
+                val notLearnedList = dictionary.filter { it.correctAnswersCount <= NEED_COUNT_TO_LEARN }
+                if (notLearnedList.isEmpty()) {
+                    println("Все слова в словаре выучены")
+                    return
+                }
+                val questionWords = notLearnedList.take(NUMBER_OF_WORDS_TO_LEARN).shuffled()
+                val correctAnswer = questionWords.random()
+                val listAskAnswer = questionWords.map { it.translation }
+                val askAnswer = listAskAnswer.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
+                println()
+                println(
+                    "${correctAnswer.original}:\n" +
+
+                            "1 - ${askAnswer[0]}\n" +
+                            "2 - ${askAnswer[1]}\n" +
+                            "3 - ${askAnswer[2]}\n" +
+                            "4 - ${askAnswer[3]}"
+                )
+                val userInputAsk = readln().trim()
+            }
+
             "2" -> {
                 val totalCount = dictionary.size
                 val listLearnCount = dictionary.filter { it.correctAnswersCount >= NEED_COUNT_TO_LEARN }
@@ -62,3 +83,4 @@ fun loadDictionary(): MutableList<Word> {
 
 const val NEED_COUNT_TO_LEARN = 3
 const val MAX_PERCENTAGE = 100
+const val NUMBER_OF_WORDS_TO_LEARN = 4
