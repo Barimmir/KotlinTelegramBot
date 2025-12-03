@@ -28,14 +28,10 @@ fun main() {
                     val takeNeedWord = dictionary.shuffled().take(needToAddWord)
                     askAnswer + takeNeedWord
                 }
-                println(
-                    "\n${correctAnswer.original}:\n" +
-
-                            "1 - ${askAnswer.random()}\n" +
-                            "2 - ${askAnswer.random()}\n" +
-                            "3 - ${askAnswer.random()}\n" +
-                            "4 - ${askAnswer.random()}"
-                )
+                println("\n${correctAnswer.original}:")
+                askAnswer.forEachIndexed { index, askInAnswer ->
+                    println("${index + INCREASE_THE_INDEX_IN_THE_LIST} - $askInAnswer")
+                }
                 val userInputAsk = readln().trim()
             }
 
@@ -88,3 +84,4 @@ fun loadDictionary(): MutableList<Word> {
 const val NEED_COUNT_TO_LEARN = 3
 const val MAX_PERCENTAGE = 100
 const val NUMBER_OF_WORDS_TO_LEARN = 4
+const val INCREASE_THE_INDEX_IN_THE_LIST = 1
