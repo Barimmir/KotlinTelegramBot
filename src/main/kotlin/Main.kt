@@ -23,14 +23,18 @@ fun main() {
                 val correctAnswer = questionWords.random()
                 val listAskAnswer = questionWords.map { it.translation }
                 val askAnswer = listAskAnswer.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
-                println()
+                if (askAnswer.size != NUMBER_OF_WORDS_TO_LEARN) {
+                    val needToAddWord = NUMBER_OF_WORDS_TO_LEARN - askAnswer.size
+                    val takeNeedWord = dictionary.shuffled().take(needToAddWord)
+                    askAnswer + takeNeedWord
+                }
                 println(
-                    "${correctAnswer.original}:\n" +
+                    "\n${correctAnswer.original}:\n" +
 
-                            "1 - ${askAnswer[0]}\n" +
-                            "2 - ${askAnswer[1]}\n" +
-                            "3 - ${askAnswer[2]}\n" +
-                            "4 - ${askAnswer[3]}"
+                            "1 - ${askAnswer.random()}\n" +
+                            "2 - ${askAnswer.random()}\n" +
+                            "3 - ${askAnswer.random()}\n" +
+                            "4 - ${askAnswer.random()}"
                 )
                 val userInputAsk = readln().trim()
             }
