@@ -25,7 +25,8 @@ fun main() {
                 val askAnswer = listAskAnswer.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
                 if (askAnswer.size != NUMBER_OF_WORDS_TO_LEARN) {
                     val needToAddWord = NUMBER_OF_WORDS_TO_LEARN - askAnswer.size
-                    val takeNeedWord = dictionary.shuffled().take(needToAddWord)
+                    val learnedList = dictionary.filter { it.correctAnswersCount >= NEED_COUNT_TO_LEARN }
+                    val takeNeedWord = learnedList.shuffled().take(needToAddWord)
                     askAnswer + takeNeedWord
                 }
                 println("\n${correctAnswer.original}:")
