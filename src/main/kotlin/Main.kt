@@ -1,6 +1,7 @@
 package org.example
 
 import java.io.File
+import java.util.Dictionary
 
 fun main() {
     val dictionary = loadDictionary()
@@ -33,7 +34,31 @@ fun main() {
                 askAnswer.forEachIndexed { index, askInAnswer ->
                     println("${index + INCREASE_THE_INDEX_IN_THE_LIST} - $askInAnswer")
                 }
+                println(
+                    "----------\n" +
+                            "0 - Меню"
+                )
+                val correctAnswerId =
+                    (askAnswer.indexOf(correctAnswer.translation) + INCREASE_THE_INDEX_IN_THE_LIST)
                 val userInputAsk = readln().trim()
+                when (userInputAsk) {
+                    "1", "2", "3", "4" -> {
+                        val userInputAskInt = userInputAsk.toInt()
+                        if (userInputAskInt == correctAnswerId) {
+                            println("Правильно")
+                            correctAnswer.correctAnswersCount++
+                            saveDictionary(dictionary)
+                        } else {
+                            println("Неправильно! ${correctAnswer.original} - это ${correctAnswer.translation}")
+                        }
+                    }
+
+                    "0" -> println()
+                    else -> {
+                        println("Введите 1,2,3,4 или 0")
+                        continue
+                    }
+                }
             }
 
             "2" -> {
@@ -80,6 +105,15 @@ fun loadDictionary(): MutableList<Word> {
         dictionary.add(word)
     }
     return dictionary
+}
+
+fun saveDictionary(dictionary: MutableList<Word>) {
+    val wordsFile = File("words.txt")
+    val lines = mutableListOf<String>()
+    for (word in dictionary) {
+        lines.add("${word.original}|${word.translation}|${word.correctAnswersCount}")
+    }
+    wordsFile.writeText(lines.toString())
 }
 
 const val NEED_COUNT_TO_LEARN = 3
