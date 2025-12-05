@@ -113,7 +113,7 @@ fun saveDictionary(dictionary: MutableList<Word>) {
     for (word in dictionary) {
         lines.add("${word.original}|${word.translation}|${word.correctAnswersCount}")
     }
-    wordsFile.writeText(lines.toString())
+    wordsFile.writeText(lines.joinToString("\n"))
 }
 
 const val NEED_COUNT_TO_LEARN = 3
