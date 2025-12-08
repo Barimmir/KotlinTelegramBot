@@ -1,7 +1,6 @@
 package org.example
 
 import java.io.File
-import java.util.Dictionary
 
 fun main() {
     val dictionary = loadDictionary()
