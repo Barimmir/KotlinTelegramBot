@@ -42,22 +42,19 @@ fun main() {
                     (askAnswer.indexOf(correctAnswer.translation) + INCREASE_THE_INDEX_IN_THE_LIST)
                 val userInputAsk = readln().trim()
                 when (userInputAsk) {
-                    "1", "2", "3", "4" -> {
-                        val userInputAskInt = userInputAsk.toInt()
-                        if (userInputAskInt == correctAnswerId) {
-                            println("Правильно")
-                            correctAnswer.correctAnswersCount++
-                            saveDictionary(dictionary)
-                        } else {
-                            println("Неправильно! ${correctAnswer.original} - это ${correctAnswer.translation}")
-                        }
-                    }
-
                     "0" -> println()
-                    else -> {
-                        println("Введите 1,2,3,4 или 0")
-                        continue
+                }
+                val userInputAskInt = userInputAsk.toInt()
+                if (userInputAskInt >= INCREASE_THE_INDEX_IN_THE_LIST && userInputAskInt <= askAnswer.size) {
+                    if (userInputAskInt == correctAnswerId) {
+                        println("Правильно")
+                        correctAnswer.correctAnswersCount++
+                        saveDictionary(dictionary)
+                    } else {
+                        println("Неправильно! ${correctAnswer.original} - это ${correctAnswer.translation}")
                     }
+                } else {
+                    println("Введите число от $INCREASE_THE_INDEX_IN_THE_LIST до ${askAnswer.size} или 0!")
                 }
             }
 
