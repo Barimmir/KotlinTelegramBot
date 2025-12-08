@@ -41,9 +41,6 @@ fun main() {
                 val correctAnswerId =
                     (askAnswer.indexOf(correctAnswer.translation) + INCREASE_THE_INDEX_IN_THE_LIST)
                 val userInputAsk = readln().trim()
-                when (userInputAsk) {
-                    "0" -> println()
-                }
                 val userInputAskInt = userInputAsk.toInt()
                 if (userInputAskInt >= INCREASE_THE_INDEX_IN_THE_LIST && userInputAskInt <= askAnswer.size) {
                     if (userInputAskInt == correctAnswerId) {
@@ -53,6 +50,8 @@ fun main() {
                     } else {
                         println("Неправильно! ${correctAnswer.original} - это ${correctAnswer.translation}")
                     }
+                } else if (userInputAskInt == ZERO_TO_EXIT) {
+                    println("Выход в меню...")
                 } else {
                     println("Введите число от $INCREASE_THE_INDEX_IN_THE_LIST до ${askAnswer.size} или 0!")
                 }
@@ -117,3 +116,4 @@ const val NEED_COUNT_TO_LEARN = 3
 const val MAX_PERCENTAGE = 100
 const val NUMBER_OF_WORDS_TO_LEARN = 4
 const val INCREASE_THE_INDEX_IN_THE_LIST = 1
+const val ZERO_TO_EXIT = 0
