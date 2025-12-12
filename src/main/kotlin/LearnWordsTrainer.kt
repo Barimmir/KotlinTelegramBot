@@ -37,7 +37,7 @@ class LearnWordsTrainer {
             val word = Word(
                 original = split[0].trim(),
                 translation = split[1].trim(),
-                correctAnswersCount = split[2].toIntOrNull() ?: 0
+                correctAnswersCount = split[2].toIntOrNull() ?: ZERO_TO_EXIT
             )
             dictionary.add(word)
         }
@@ -69,7 +69,7 @@ class LearnWordsTrainer {
     fun getNextQuestion(): Question? {
         val notLearnedList = dictionary.filter { it.correctAnswersCount <= NEED_COUNT_TO_LEARN }
         if (notLearnedList.isEmpty()) return null
-        val questionWords = notLearnedList.take(NUMBER_OF_WORDS_TO_LEARN).shuffled()
+        val questionWords = notLearnedList.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
         val correctAnswer = questionWords.random()
         val listAskAnswer = questionWords.map { it.translation }
         val askAnswer = listAskAnswer.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
