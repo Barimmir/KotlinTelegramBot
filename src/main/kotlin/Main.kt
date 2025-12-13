@@ -4,7 +4,7 @@ fun main() {
     val trainer = try {
         LearnWordsTrainer()
     } catch (e: Exception) {
-        println("Невозможно загрузить словарь")
+        println("Невозможно загрузить словарь: ${e.message}")
         return
     }
 
