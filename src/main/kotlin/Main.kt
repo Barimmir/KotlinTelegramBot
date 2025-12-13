@@ -26,16 +26,20 @@ fun main() {
                 while (true) {
                     println(question.asConsoleString())
                     val userInputAsk = readln().trim()
-                    if (userInputAsk >= INCREASE_THE_INDEX_IN_THE_LIST.toString() && userInputAsk <= question.askAnswer.size.toString()) {
+                    while (userInputAsk !in (ZERO_TO_EXIT..question.askAnswer.size).toString()) {
+                        println("Введите число от $INCREASE_THE_INDEX_IN_THE_LIST до ${question.askAnswer.size} или $ZERO_TO_EXIT!")
+                        return
+                    }
+                    val userInputAskInt = userInputAsk.toInt()
+                    if (userInputAskInt >= INCREASE_THE_INDEX_IN_THE_LIST && userInputAskInt <= question.askAnswer.size) {
                         if (trainer.checkAnswer(userInputAsk.toInt())) {
                             println("Правильно")
                         } else {
                             println("Неправильно! ${question.correctAnswer.original} - это ${question.correctAnswer.translation}")
                         }
-                    } else if (userInputAsk == ZERO_TO_EXIT.toString()) {
+                    }
+                    if (userInputAskInt == ZERO_TO_EXIT) {
                         break
-                    } else {
-                        println("Введите число от $INCREASE_THE_INDEX_IN_THE_LIST до ${question.askAnswer.size} или 0!")
                     }
                 }
             }
