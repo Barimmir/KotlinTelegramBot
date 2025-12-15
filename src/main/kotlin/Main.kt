@@ -1,7 +1,13 @@
 package org.example
 
 fun main() {
-    val trainer = LearnWordsTrainer()
+    val trainer = try {
+        LearnWordsTrainer()
+    } catch (e: Exception) {
+        println("Невозможно загрузить словарь: ${e.message}")
+        return
+    }
+
     while (true) {
         println(
             "========= МЕНЮ =========\n" +
@@ -17,19 +23,24 @@ fun main() {
                     println("Все слова в словаре выучены")
                     return
                 }
-                println(question.asConsoleString())
-                val userInputAsk = readln().trim()
-                val userInputAskInt = userInputAsk.toInt()
-                if (userInputAskInt >= INCREASE_THE_INDEX_IN_THE_LIST && userInputAskInt <= question.askAnswer.size) {
-                    if (trainer.checkAnswer(userInputAskInt)) {
-                        println("Правильно")
-                    } else {
-                        println("Неправильно! ${question.correctAnswer.original} - это ${question.correctAnswer.translation}")
+                while (true) {
+                    println(question.asConsoleString())
+                    val userInputAsk = readln().trim()
+                    while (userInputAsk !in (ZERO_TO_EXIT..question.askAnswer.size).toString()) {
+                        println("Введите число от $INCREASE_THE_INDEX_IN_THE_LIST до ${question.askAnswer.size} или $ZERO_TO_EXIT!")
+                        return
                     }
-                } else if (userInputAskInt == ZERO_TO_EXIT) {
-                    println("Выход в меню...")
-                } else {
-                    println("Введите число от $INCREASE_THE_INDEX_IN_THE_LIST до ${question.askAnswer.size} или 0!")
+                    val userInputAskInt = userInputAsk.toInt()
+                    if (userInputAskInt >= INCREASE_THE_INDEX_IN_THE_LIST && userInputAskInt <= question.askAnswer.size) {
+                        if (trainer.checkAnswer(userInputAsk.toInt())) {
+                            println("Правильно")
+                        } else {
+                            println("Неправильно! ${question.correctAnswer.original} - это ${question.correctAnswer.translation}")
+                        }
+                    }
+                    if (userInputAskInt == ZERO_TO_EXIT) {
+                        break
+                    }
                 }
             }
 
