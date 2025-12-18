@@ -11,13 +11,19 @@ fun main(args: Array<String>) {
 
     while (true) {
         Thread.sleep(2000)
-        val updates: String = getUpdates(botToken, updateId)
+        val updates = getUpdates(botToken, updateId)
         println(updates)
-        val startedUpdateId = updates.lastIndexOf("update_id")
-        val endUpdateId = updates.lastIndexOf(",\n\"message\"")
-        if (startedUpdateId == -1 || endUpdateId == -1) continue
-        val updateIdString = updates.substring(startedUpdateId + ADDITION_TO_ID, endUpdateId)
-        updateId = updateIdString.toInt() + 1
+        val updateIdRegex: Regex = "\"updateId\":\" (.+?),\n\"message\"".toRegex()
+        val matchResultUpdateId = updateIdRegex.find(updates)
+        val groupsUpdateId = matchResultUpdateId?.groups
+        updateId = groupsUpdateId?.get(0)?.value?.toInt() ?: 0
+        println(updateId)
+
+        val messageTextRegex: Regex = "\"text\":\"(.*?)\"".toRegex()
+        val matchResultText = messageTextRegex.find(updates)
+        val groupsText = matchResultText?.groups
+        val text = groupsText?.get(1)?.value
+        println(text)
     }
 }
 
@@ -28,5 +34,3 @@ fun getUpdates(botToken: String, updatesId: Int): String {
     val response = client.send(request, HttpResponse.BodyHandlers.ofString())
     return response.body()
 }
-
-const val ADDITION_TO_ID = 11
