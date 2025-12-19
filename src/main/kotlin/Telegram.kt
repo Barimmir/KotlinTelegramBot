@@ -13,10 +13,10 @@ fun main(args: Array<String>) {
         Thread.sleep(2000)
         val updates = getUpdates(botToken, updateId)
         println(updates)
-        val updateIdRegex: Regex = "\"updateId\":\" (.+?),\n\"message\"".toRegex()
+        val updateIdRegex: Regex = "\"update_id\":\\s*(\\d+)".toRegex()
         val matchResultUpdateId = updateIdRegex.find(updates)
         val groupsUpdateId = matchResultUpdateId?.groups
-        updateId = groupsUpdateId?.get(0)?.value?.toInt() ?: 0
+        updateId = groupsUpdateId?.get(1)?.value?.toInt() ?: 0
         println(updateId)
 
         val messageTextRegex: Regex = "\"text\":\"(.*?)\"".toRegex()
