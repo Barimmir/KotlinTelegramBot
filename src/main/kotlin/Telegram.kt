@@ -22,10 +22,11 @@ fun main(args: Array<String>) {
         println(text)
 
         val chatIdRegex: Regex = """"chat"\s*:\s*\{[^}]*"id"\s*:\s*(\d+)""".toRegex()
-        val matchResultChatId = chatIdRegex.find(updates)
+        val matchResultChatId = chatIdRegex.findAll(updates).lastOrNull()
         val groupsChatId = matchResultChatId?.groups
         val chatId = groupsChatId?.get(1)?.value
         println(chatId)
+
         if (text == "Hello") {
             val askUser = "Hello"
             val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, text = askUser)
