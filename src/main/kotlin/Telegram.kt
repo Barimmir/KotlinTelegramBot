@@ -4,6 +4,7 @@ fun main(args: Array<String>) {
     val botToken = args[0]
     var updateId = 0
     val telegramBotService = TelegramBotService()
+    val trainer = LearnWordsTrainer()
 
     while (true) {
         Thread.sleep(2000)
@@ -27,10 +28,13 @@ fun main(args: Array<String>) {
         val chatId = groupsChatId?.get(1)?.value
         println(chatId)
 
-        if (text == "Hello") {
-            val askUser = "Hello"
-            val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, text = askUser)
+        if (text == "Hello" && chatId != null) {
+            val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, message = "Hello")
             println(sendMessageResult)
+        }
+        if (text == "/start" && chatId != null) {
+            val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
+            println(sendMenu)
         }
     }
 }
