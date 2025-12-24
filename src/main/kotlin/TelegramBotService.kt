@@ -12,16 +12,15 @@ class TelegramBotService {
 
     fun getUpdates(botToken: String, updatesId: Int): String {
         val urlGetUpdates = "$TELEGRAM_BOT_API$botToken/getUpdates?offset=$updatesId"
-        val client = HttpClient.newBuilder().build()
         val request = HttpRequest.newBuilder().uri(URI.create(urlGetUpdates)).build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
         return response.body()
     }
 
     fun sendMessage(botToken: String, chatId: String, message: String): String {
         val encoded = URLEncoder.encode(message, StandardCharsets.UTF_8)
         println(encoded)
-        val urlSendMessage = "$TELEGRAM_BOT_API$botToken/sendMessage"
+        val urlSendMessage = "$TELEGRAM_BOT_API$botToken/sendMessage?text=$encoded"
         val requestBody = """
         {
             "chat_id": $chatId,

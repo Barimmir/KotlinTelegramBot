@@ -31,6 +31,10 @@ fun main(args: Array<String>) {
                 telegramBotService.sendMessage(botToken, chatId, message = "Выучено 10 из 10 fabric | 100%")
             println(sendStatistic)
         }
+        if (data == LEARN_WORDS_CALLBACK_DATA && chatId != null) {
+            val sandLearnWords = telegramBotService.sendMessage(botToken, chatId, message = "Выбрано изучение слов")
+            println(sandLearnWords)
+        }
     }
 }
 
