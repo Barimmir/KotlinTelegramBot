@@ -5,38 +5,35 @@ fun main(args: Array<String>) {
     var updateId = 0
     val telegramBotService = TelegramBotService()
     val trainer = LearnWordsTrainer()
+    val updateIdRegex: Regex = "\"update_id\":\\s*(\\d+)".toRegex()
+    val messageTextRegex: Regex = "\"text\":\"(.*?)\"".toRegex()
+    val chatIdRegex: Regex = "\"chat\":\\{\"id\":(\\d+)".toRegex()
+    val dataRegex: Regex = "\"data\":\"(.*?)\"".toRegex()
 
     while (true) {
         Thread.sleep(2000)
         val updates = telegramBotService.getUpdates(botToken, updateId + INCREASE_UPDATE_ID)
-        println(updates)
-        val updateIdRegex: Regex = "\"update_id\":\\s*(\\d+)".toRegex()
-        val matchResultUpdateId = updateIdRegex.find(updates)
-        val groupsUpdateId = matchResultUpdateId?.groups
-        updateId = groupsUpdateId?.get(1)?.value?.toInt() ?: 0
-        println(updateId)
+        updateId = updateIdRegex.find(updates)?.groups?.get(1)?.value?.toInt() ?: 0
+        val message = messageTextRegex.find(updates)?.groups?.get(1)?.value
+        val chatId = chatIdRegex.findAll(updates).lastOrNull()?.groups?.get(1)?.value
+        val data = dataRegex.find(updates)?.groups?.get(1)?.value
 
-        val messageTextRegex: Regex = "\"text\":\"(.*?)\"".toRegex()
-        val matchResultText = messageTextRegex.find(updates)
-        val groupsText = matchResultText?.groups
-        val text = groupsText?.get(1)?.value
-        println(text)
-
-        val chatIdRegex: Regex = """"chat"\s*:\s*\{[^}]*"id"\s*:\s*(\d+)""".toRegex()
-        val matchResultChatId = chatIdRegex.findAll(updates).lastOrNull()
-        val groupsChatId = matchResultChatId?.groups
-        val chatId = groupsChatId?.get(1)?.value
-        println(chatId)
-
-        if (text == "Hello" && chatId != null) {
+        if (message == RESPONSE_TO_COMMAND_HELLO && chatId != null) {
             val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, message = "Hello")
             println(sendMessageResult)
         }
-        if (text == "/start" && chatId != null) {
+        if (message == RESPONSE_TO_COMMAND_START && chatId != null) {
             val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
             println(sendMenu)
+        }
+        if (data == STATISTICS_CALLBACK_DATA && chatId != null) {
+            val sendStatistic =
+                telegramBotService.sendMessage(botToken, chatId, message = "Выучено 10 из 10 fabric | 100%")
+            println(sendStatistic)
         }
     }
 }
 
 const val INCREASE_UPDATE_ID = 1
+const val RESPONSE_TO_COMMAND_HELLO = "Hello"
+const val RESPONSE_TO_COMMAND_START = "/start"
