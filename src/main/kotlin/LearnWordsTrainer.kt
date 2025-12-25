@@ -10,7 +10,6 @@ data class Word(
 
 data class Statistics(
     val totalCount: Int,
-    val listLearnCount: List<Word>,
     val learnCount: Int,
     val percent: String,
 )
@@ -61,12 +60,10 @@ class LearnWordsTrainer {
 
     fun getStatistics(): Statistics {
         val totalCount = dictionary.size
-        val listLearnCount = dictionary.filter { it.correctAnswersCount >= NEED_COUNT_TO_LEARN }
-        val learnCount = listLearnCount.size
-        val percent = ((learnCount / totalCount) * MAX_PERCENTAGE).toString()
+        val learnCount = dictionary.filter { it.correctAnswersCount >= NEED_COUNT_TO_LEARN }.size
+        val percent = ((learnCount * MAX_PERCENTAGE / totalCount)).toString()
         return Statistics(
             totalCount,
-            listLearnCount,
             learnCount,
             percent
         )
