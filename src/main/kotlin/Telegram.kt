@@ -27,8 +27,13 @@ fun main(args: Array<String>) {
             println(sendMenu)
         }
         if (data == STATISTICS_CALLBACK_DATA && chatId != null) {
+            val statistics = trainer.getStatistics()
             val sendStatistic =
-                telegramBotService.sendMessage(botToken, chatId, message = "Выучено 10 из 10 fabric | 100%")
+                telegramBotService.sendMessage(
+                    botToken,
+                    chatId,
+                    message = "Выучено ${statistics.learnCount} из ${statistics.totalCount} слов | ${statistics.percent}%"
+                )
             println(sendStatistic)
         }
         if (data == LEARN_WORDS_CALLBACK_DATA && chatId != null) {
