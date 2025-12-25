@@ -1,11 +1,9 @@
 package org.example
 
 import java.net.URI
-import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.nio.charset.StandardCharsets
 
 class TelegramBotService {
     private val httpClient = HttpClient.newBuilder().build()
@@ -18,9 +16,7 @@ class TelegramBotService {
     }
 
     fun sendMessage(botToken: String, chatId: String, message: String): String {
-        val encoded = URLEncoder.encode(message, StandardCharsets.UTF_8)
-        println(encoded)
-        val urlSendMessage = "$TELEGRAM_BOT_API$botToken/sendMessage?text=$encoded"
+        val urlSendMessage = "$TELEGRAM_BOT_API$botToken/sendMessage"
         val requestBody = """
         {
             "chat_id": $chatId,
