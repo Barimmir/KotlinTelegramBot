@@ -37,10 +37,23 @@ fun main(args: Array<String>) {
             println(sendStatistic)
         }
         if (data == LEARN_WORDS_CALLBACK_DATA && chatId != null) {
-            val sandLearnWords = telegramBotService.sendMessage(botToken, chatId, message = "Выбрано изучение слов")
-            println(sandLearnWords)
+            val sendQuestion = checkNextQuestionAndSand(trainer, telegramBotService, chatId, botToken)
+            println(sendQuestion)
         }
     }
+}
+
+fun checkNextQuestionAndSand(
+    trainer: LearnWordsTrainer,
+    telegramBotService: TelegramBotService,
+    chatId: String,
+    botToken: String
+): String {
+    val question = trainer.getNextQuestion()
+    if (question == null) {
+        println("Все слова выучены!")
+    }
+    return telegramBotService.sendQuestion(botToken, chatId, question!!)
 }
 
 const val INCREASE_UPDATE_ID = 1
