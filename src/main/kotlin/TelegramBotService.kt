@@ -75,7 +75,13 @@ class TelegramBotService {
         "text": "${question.correctAnswer.original}:",
         "reply_markup": {
             "inline_keyboard": [
-                [$answerButtonsJson]
+                [
+                $answerButtonsJson,
+                {
+                "text": "назад",
+                "callback_data": "$BACK_CALLBACK_DATA"
+                }
+                ]
             ]
         }
     }
@@ -92,3 +98,4 @@ const val TELEGRAM_BOT_API = "https://api.telegram.org/bot"
 const val LEARN_WORDS_CALLBACK_DATA = "learn_words_clicked"
 const val STATISTICS_CALLBACK_DATA = "statistic_clicked"
 const val CALLBACK_DATA_ANSWER_PREFIX = "answer_"
+const val BACK_CALLBACK_DATA = "back_clicked"

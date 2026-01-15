@@ -15,18 +15,19 @@ fun main(args: Array<String>) {
         val updates = telegramBotService.getUpdates(botToken, updateId + INCREASE_UPDATE_ID)
         updateId = updateIdRegex.find(updates)?.groups?.get(1)?.value?.toInt() ?: 0
         val message = messageTextRegex.find(updates)?.groups?.get(1)?.value
-        val chatId = chatIdRegex.findAll(updates).lastOrNull()?.groups?.get(1)?.value
+        val chatId = chatIdRegex.findAll(updates).lastOrNull()?.groups?.get(1)?.value.toString()
         val data = dataRegex.find(updates)?.groups?.get(1)?.value
+        val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
 
-        if (message == RESPONSE_TO_COMMAND_HELLO && chatId != null) {
+        if (message == RESPONSE_TO_COMMAND_HELLO) {
             val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, message = "Hello")
             println(sendMessageResult)
-        }
-        if (message == RESPONSE_TO_COMMAND_START && chatId != null) {
-            val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
             println(sendMenu)
         }
-        if (data == STATISTICS_CALLBACK_DATA && chatId != null) {
+        if (message == RESPONSE_TO_COMMAND_START) {
+            println(sendMenu)
+        }
+        if (data == STATISTICS_CALLBACK_DATA) {
             val statistics = trainer.getStatistics()
             val sendStatistic =
                 telegramBotService.sendMessage(
@@ -36,9 +37,12 @@ fun main(args: Array<String>) {
                 )
             println(sendStatistic)
         }
-        if (data == LEARN_WORDS_CALLBACK_DATA && chatId != null) {
+        if (data == LEARN_WORDS_CALLBACK_DATA) {
             val sendQuestion = checkNextQuestionAndSand(trainer, telegramBotService, chatId, botToken)
             println(sendQuestion)
+        }
+        if (message == BACK_CALLBACK_DATA) {
+            println(sendMenu)
         }
     }
 }
