@@ -15,49 +15,50 @@ fun main(args: Array<String>) {
         val updates = telegramBotService.getUpdates(botToken, updateId + INCREASE_UPDATE_ID)
         updateId = updateIdRegex.find(updates)?.groups?.get(1)?.value?.toInt() ?: 0
         val message = messageTextRegex.find(updates)?.groups?.get(1)?.value
-        val chatId = chatIdRegex.findAll(updates).lastOrNull()?.groups?.get(1)?.value.toString()
+        val chatId = chatIdRegex.findAll(updates).lastOrNull()?.groups?.get(1)?.value
         val data = dataRegex.find(updates)?.groups?.get(1)?.value
-        val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
 
-        if (message == RESPONSE_TO_COMMAND_HELLO) {
-            val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, message = "Hello")
+        if (message == RESPONSE_TO_COMMAND_HELLO && chatId != null) {
+            val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, "Hello")
             println(sendMessageResult)
+        }
+        if (message == RESPONSE_TO_COMMAND_START && chatId != null) {
+            val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
             println(sendMenu)
         }
-        if (message == RESPONSE_TO_COMMAND_START) {
-            println(sendMenu)
-        }
-        if (data == STATISTICS_CALLBACK_DATA) {
+        if (data == STATISTICS_CALLBACK_DATA && chatId != null) {
             val statistics = trainer.getStatistics()
             val sendStatistic =
                 telegramBotService.sendMessage(
                     botToken,
                     chatId,
-                    message = "Выучено ${statistics.learnCount} из ${statistics.totalCount} слов | ${statistics.percent}%"
+                    "Выучено ${statistics.learnCount} из ${statistics.totalCount} слов | ${statistics.percent}%"
                 )
             println(sendStatistic)
         }
-        if (data == LEARN_WORDS_CALLBACK_DATA) {
-            val sendQuestion = checkNextQuestionAndSand(trainer, telegramBotService, chatId, botToken)
+        if (data == LEARN_WORDS_CALLBACK_DATA && chatId != null) {
+            val sendQuestion = checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken)
             println(sendQuestion)
         }
-        if (message == BACK_CALLBACK_DATA) {
+        if (data == BACK_CALLBACK_DATA && chatId != null) {
+            val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
             println(sendMenu)
         }
     }
 }
 
-fun checkNextQuestionAndSand(
+fun checkNextQuestionAndSend(
     trainer: LearnWordsTrainer,
     telegramBotService: TelegramBotService,
     chatId: String,
     botToken: String
 ): String {
     val question = trainer.getNextQuestion()
-    if (question == null) {
-        println("Все слова выучены!")
+    return if (question != null) {
+        telegramBotService.sendQuestion(botToken, chatId, question)
+    } else {
+        telegramBotService.sendMessage(botToken, chatId, "Все слова выучены!")
     }
-    return telegramBotService.sendQuestion(botToken, chatId, question!!)
 }
 
 const val INCREASE_UPDATE_ID = 1
