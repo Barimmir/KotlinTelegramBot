@@ -94,7 +94,7 @@ class LearnWordsTrainer {
     fun checkAnswer(userInputAskInt: Int): Boolean {
         if (question == null) return false
         val correctAnswerId =
-            (question?.askAnswer?.indexOf(question?.correctAnswer?.translation)?.plus(INCREASE_THE_INDEX_IN_THE_LIST))
+            (question?.askAnswer?.indexOf(question?.correctAnswer?.translation))
         if (correctAnswerId == userInputAskInt) {
             question?.correctAnswer?.correctAnswersCount++
             saveDictionary(dictionary)
