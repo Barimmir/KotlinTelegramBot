@@ -5,6 +5,7 @@ fun main(args: Array<String>) {
     var updateId = 0
     val telegramBotService = TelegramBotService()
     val trainer = LearnWordsTrainer()
+    var question: Question? = null
     val updateIdRegex: Regex = "\"update_id\":\\s*(\\d+)".toRegex()
     val messageTextRegex: Regex = "\"text\":\"(.*?)\"".toRegex()
     val chatIdRegex: Regex = "\"chat\":\\{\"id\":(\\d+)".toRegex()
@@ -37,8 +38,27 @@ fun main(args: Array<String>) {
             println(sendStatistic)
         }
         if (data == LEARN_WORDS_CALLBACK_DATA && chatId != null) {
-            val sendQuestion = checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken)
-            println(sendQuestion)
+            question = checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken)
+            println(question)
+        }
+        if (data?.startsWith(CALLBACK_DATA_ANSWER_PREFIX) == true && chatId != null) {
+            val userAnswerIndex = data.substringAfter(CALLBACK_DATA_ANSWER_PREFIX).toInt()
+            val resultAsk = trainer.checkAnswer(userAnswerIndex)
+            if (resultAsk) {
+                val messageWin = telegramBotService.sendMessage(botToken, chatId, "Правильно!")
+                println(messageWin)
+                question = checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken)
+                println(question)
+            } else {
+                val messageLose = telegramBotService.sendMessage(
+                    botToken,
+                    chatId,
+                    "Неправильно! ${question?.correctAnswer?.original} - это ${question?.correctAnswer?.translation}"
+                )
+                println(messageLose)
+                question = checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken)
+                println(question)
+            }
         }
         if (data == BACK_CALLBACK_DATA && chatId != null) {
             val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
@@ -52,13 +72,14 @@ fun checkNextQuestionAndSend(
     telegramBotService: TelegramBotService,
     chatId: String,
     botToken: String
-): String {
+): Question? {
     val question = trainer.getNextQuestion()
-    return if (question != null) {
+    if (question != null) {
         telegramBotService.sendQuestion(botToken, chatId, question)
     } else {
         telegramBotService.sendMessage(botToken, chatId, "Все слова выучены!")
     }
+    return question
 }
 
 const val INCREASE_UPDATE_ID = 1
