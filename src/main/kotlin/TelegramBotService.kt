@@ -46,7 +46,7 @@ class TelegramBotService {
         val requestBody = SendMessageRequest(
             chatId, message,
         )
-        return SendJsonRequest(json, botToken, "sendMessage", requestBody)
+        return sendJsonRequest(json, botToken, "sendMessage", requestBody)
     }
 
     fun sendMenuMessage(json: Json, botToken: String, chatId: Long): String {
@@ -62,7 +62,7 @@ class TelegramBotService {
                 )
             )
         )
-        return SendJsonRequest(json, botToken, "sendMessage", requestBody)
+        return sendJsonRequest(json, botToken, "sendMessage", requestBody)
     }
 
     fun sendQuestion(json: Json, botToken: String, chatId: Long, question: Question): String {
@@ -79,10 +79,10 @@ class TelegramBotService {
             question.correctAnswer.original,
             replyMarkup
         )
-        return SendJsonRequest(json, botToken, "sendMessage", requestBody)
+        return sendJsonRequest(json, botToken, "sendMessage", requestBody)
     }
 
-    private fun SendJsonRequest(json: Json, botToken: String, method: String, requestBody: SendMessageRequest): String {
+    private fun sendJsonRequest(json: Json, botToken: String, method: String, requestBody: SendMessageRequest): String {
         val url = "$TELEGRAM_BOT_API$botToken/$method"
         val requestBodyString = json.encodeToString(requestBody)
         val request =
