@@ -47,7 +47,6 @@ fun main(args: Array<String>) {
     var lastUpdateId = 0L
     val telegramBotService = TelegramBotService()
     val trainers = HashMap<Long, LearnWordsTrainer>()
-    val trainer = LearnWordsTrainer()
     val json = Json { ignoreUnknownKeys = true }
 
     while (true) {
