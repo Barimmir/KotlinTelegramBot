@@ -53,7 +53,7 @@ fun main(args: Array<String>) {
         Thread.sleep(2000)
         val responseString = telegramBotService.getUpdates(botToken, lastUpdateId)
         println(responseString)
-        val response: Response = json.decodeFromString<Response>(responseString)
+        val response: Response = json.decodeFromString<Response>(responseString.toString())
         if (response.result.isEmpty()) continue
         val sortedUpdates = response.result.sortedBy { it.updateId }
         sortedUpdates.forEach { handleUpdate(it, json, botToken, trainers, telegramBotService) }

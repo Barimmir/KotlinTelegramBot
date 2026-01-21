@@ -3,6 +3,7 @@ package org.example
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.IOException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -35,11 +36,20 @@ data class InlineKeyboard(
 class TelegramBotService {
     private val httpClient = HttpClient.newBuilder().build()
 
-    fun getUpdates(botToken: String, updatesId: Long): String {
+    fun getUpdates(botToken: String, updatesId: Long): String? {
         val urlGetUpdates = "$TELEGRAM_BOT_API$botToken/getUpdates?offset=$updatesId"
         val request = HttpRequest.newBuilder().uri(URI.create(urlGetUpdates)).build()
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        return response.body()
+        repeat(3) { attempt ->
+            try {
+                val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+                return response.body()
+            } catch (e: IOException) {
+                println("Ошибка сети, попытка ${attempt + 1}/3: ${e.message}")
+                if (attempt == 2) throw e
+                Thread.sleep(2000)
+            }
+        }
+        return "Если ты это увидел, то ты счастливчик!"
     }
 
     fun sendMessage(json: Json, botToken: String, chatId: Long, message: String): String {
@@ -68,13 +78,17 @@ class TelegramBotService {
 
     fun sendQuestion(json: Json, botToken: String, chatId: Long, question: Question): String {
         val answerButtons =
-            question.askAnswer.mapIndexed { index, word -> InlineKeyboard("$CALLBACK_DATA_ANSWER_PREFIX$index", word) }
-        val replyMarkup = ReplyMarkup(
-            listOf(
-                answerButtons,
-                listOf(InlineKeyboard(BACK_CALLBACK_DATA, "назад"))
-            )
-        )
+            question.askAnswer.mapIndexed { index, word ->
+                listOf(
+                    InlineKeyboard(
+                        "$CALLBACK_DATA_ANSWER_PREFIX$index",
+                        word
+                    )
+                )
+            }
+        val allButtons = answerButtons.toMutableList()
+        allButtons.add(listOf(InlineKeyboard(BACK_CALLBACK_DATA, "назад")))
+        val replyMarkup = ReplyMarkup(allButtons)
         val requestBody = SendMessageRequest(
             chatId,
             question.correctAnswer.original,
