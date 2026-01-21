@@ -58,7 +58,8 @@ class TelegramBotService {
                         InlineKeyboard(
                             STATISTICS_CALLBACK_DATA, "Статистика"
                         )
-                    )
+                    ),
+                    listOf(InlineKeyboard(RESET_CALLBACK_DATA, "Сбросить статистику"))
                 )
             )
         )
@@ -98,3 +99,4 @@ const val LEARN_WORDS_CALLBACK_DATA = "learn_words_clicked"
 const val STATISTICS_CALLBACK_DATA = "statistic_clicked"
 const val CALLBACK_DATA_ANSWER_PREFIX = "answer_"
 const val BACK_CALLBACK_DATA = "back_clicked"
+const val RESET_CALLBACK_DATA = "reset_clicked"
