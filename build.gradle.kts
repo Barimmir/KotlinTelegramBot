@@ -1,6 +1,8 @@
 plugins {
     kotlin("jvm") version "2.3.0"
     kotlin("plugin.serialization") version "2.3.0"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+    application
 }
 
 group = "org.example"
@@ -20,4 +22,8 @@ tasks.test {
 }
 kotlin {
     jvmToolchain(24)
+}
+
+application {
+    mainClass.set("org.example.TelegramKt")
 }
