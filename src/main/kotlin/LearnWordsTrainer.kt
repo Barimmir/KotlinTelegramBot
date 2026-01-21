@@ -79,12 +79,13 @@ class LearnWordsTrainer(
         val questionWords = notLearnedList.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
         val correctAnswer = questionWords.random()
         val listAskAnswer = questionWords.map { it.translation }
-        val askAnswer = listAskAnswer.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
+        var askAnswer = listAskAnswer.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
         if (askAnswer.size != NUMBER_OF_WORDS_TO_LEARN) {
             val needToAddWord = NUMBER_OF_WORDS_TO_LEARN - askAnswer.size
             val learnedList = dictionary.filter { it.correctAnswersCount >= NEED_COUNT_TO_LEARN }
             val takeNeedWord = learnedList.shuffled().take(needToAddWord)
-            askAnswer + takeNeedWord
+            val takeNeedWordListString = takeNeedWord.map { it.translation }
+            askAnswer = (askAnswer + takeNeedWordListString).shuffled()
         }
         question = Question(
             variants = questionWords,
