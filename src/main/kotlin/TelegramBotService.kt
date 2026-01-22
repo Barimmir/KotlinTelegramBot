@@ -36,20 +36,10 @@ data class InlineKeyboard(
 class TelegramBotService {
     private val httpClient = HttpClient.newBuilder().build()
 
-    fun getUpdates(botToken: String, updatesId: Long): String? {
+    fun getUpdates(botToken: String, updatesId: Long): String {
         val urlGetUpdates = "$TELEGRAM_BOT_API$botToken/getUpdates?offset=$updatesId"
         val request = HttpRequest.newBuilder().uri(URI.create(urlGetUpdates)).build()
-        repeat(3) { attempt ->
-            try {
-                val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-                return response.body()
-            } catch (e: IOException) {
-                println("Ошибка сети, попытка ${attempt + 1}/3: ${e.message}")
-                if (attempt == 2) throw e
-                Thread.sleep(2000)
-            }
-        }
-        return "Если ты это увидел, то ты счастливчик!"
+        return handlingNetworkErrors(request)
     }
 
     fun sendMessage(json: Json, botToken: String, chatId: Long, message: String): String {
@@ -103,8 +93,21 @@ class TelegramBotService {
         val request =
             HttpRequest.newBuilder().uri(URI.create(url)).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBodyString)).build()
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        return response.body()
+        return handlingNetworkErrors(request)
+    }
+
+    fun handlingNetworkErrors(request: HttpRequest): String {
+        repeat(3) { attempt ->
+            try {
+                val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+                return response.body()
+            } catch (e: IOException) {
+                println("Ошибка сети, попытка ${attempt + 1}/3: ${e.message}")
+                if (attempt == 2) throw e
+                Thread.sleep(2000)
+            }
+        }
+        return "Error"
     }
 }
 
