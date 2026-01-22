@@ -74,7 +74,7 @@ class LearnWordsTrainer(
     }
 
     fun getNextQuestion(): Question? {
-        val notLearnedList = dictionary.filter { it.correctAnswersCount <= NEED_COUNT_TO_LEARN }
+        val notLearnedList = dictionary.filter { it.correctAnswersCount < NEED_COUNT_TO_LEARN }
         if (notLearnedList.isEmpty()) return null
         val questionWords = notLearnedList.shuffled().take(NUMBER_OF_WORDS_TO_LEARN)
         val correctAnswer = questionWords.random()
@@ -127,4 +127,9 @@ fun Question.asConsoleString(): String {
     return String()
 }
 
+const val NEED_COUNT_TO_LEARN = 3
+const val MAX_PERCENTAGE = 100
+const val NUMBER_OF_WORDS_TO_LEARN = 4
+const val INCREASE_THE_INDEX_IN_THE_LIST = 1
+const val ZERO_TO_EXIT = 0
 
