@@ -67,15 +67,20 @@ class LearnWordsTrainerTest {
     @Test
     fun `test checkAnswer() with false`() {
         val trainer = LearnWordsTrainer("src/test/false_words.txt")
-        val nonCorrectAnswer = trainer.getNextQuestion()?.correctAnswer?.translation?.indices?.last
-        val checkAnswer = nonCorrectAnswer?.let { trainer.checkAnswer(it) }
+        val nonCorrectAnswer = trainer.getNextQuestion()
+        val wrongAnswerId = nonCorrectAnswer?.let { q ->
+            q.askAnswer.withIndex()
+                .find { (_, answer) -> answer != q.correctAnswer.translation }
+                ?.index
+        }
+        val checkAnswer = wrongAnswerId?.let { trainer.checkAnswer(it) }
         assertFalse { checkAnswer ?: true }
     }
 
     @Test
     fun `test resetProgress() with 2 words in dictionary`() {
         val trainer = LearnWordsTrainer("src/test/2_words_in_dictionary.txt")
-        val result = trainer.resetProgress()
-        assertNotNull(result)
+        trainer.resetProgress()
+        assertEquals(Statistics(2, 0, "0"), trainer.getStatistics())
     }
 }
