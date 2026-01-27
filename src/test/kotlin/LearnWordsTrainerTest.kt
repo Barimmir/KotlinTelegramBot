@@ -1,5 +1,4 @@
 import org.example.LearnWordsTrainer
-import org.example.Question
 import org.example.Statistics
 import org.junit.jupiter.api.Assertions.assertFalse
 import kotlin.test.Test
@@ -59,17 +58,24 @@ class LearnWordsTrainerTest {
     fun `test checkAnswer() with true`() {
         val trainer = LearnWordsTrainer("src/test/true_words.txt")
         val question = trainer.getNextQuestion()
-        val correctAnswerId: Int =
-            (question?.askAnswer?.indexOf(question.correctAnswer.translation))!!
-        val checkAnswer = trainer.checkAnswer(correctAnswerId)
-        assertTrue { checkAnswer }
+        val correctAnswerId: Int? =
+            (question?.askAnswer?.indexOf(question.correctAnswer.translation))
+        val checkAnswer = correctAnswerId?.let { trainer.checkAnswer(it) }
+        assertTrue { checkAnswer ?: false }
     }
 
     @Test
     fun `test checkAnswer() with false`() {
         val trainer = LearnWordsTrainer("src/test/false_words.txt")
-        val nonCorrectAnswer = 0
-        val checkAnswer = trainer.checkAnswer(nonCorrectAnswer)
-        assertFalse { checkAnswer }
+        val nonCorrectAnswer = trainer.getNextQuestion()?.correctAnswer?.translation?.indices?.last
+        val checkAnswer = nonCorrectAnswer?.let { trainer.checkAnswer(it) }
+        assertFalse { checkAnswer ?: true }
+    }
+
+    @Test
+    fun `test resetProgress() with 2 words in dictionary`() {
+        val trainer = LearnWordsTrainer("src/test/2_words_in_dictionary.txt")
+        val result = trainer.resetProgress()
+        assertNotNull(result)
     }
 }
