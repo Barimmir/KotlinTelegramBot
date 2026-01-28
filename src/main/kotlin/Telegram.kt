@@ -119,13 +119,14 @@ fun handleUpdate(
         val response: GetFileResponse = json.decodeFromString(getFile)
         val targetFile = File("${document.fileName}.${document.fileId}")
         response.result?.let {
-            if (targetFile.exists()) {
-                telegramBotService.downloadFile(botToken, it.fileUniqueId, it.filePath)
+            if (!targetFile.exists()) {
+                telegramBotService.downloadFile(botToken, document.fileName, it.filePath)
             } else {
                 val sendMessageResult = telegramBotService.sendMessage(json, botToken, chatId, "Такой файл уже есть!")
                 println(sendMessageResult)
             }
         }
+        trainer.loadDictionary(document.fileName)
     }
 
     if (message == RESPONSE_TO_COMMAND_HELLO) {

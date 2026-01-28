@@ -95,7 +95,6 @@ class TelegramBotService {
         return sendJsonRequest(json, botToken, "sendMessage", requestBody)
     }
 
-
     fun getFile(json: Json, botToken: String, fileId: String): String {
         val requestBody = GetFileRequest(fileId)
         return sendJsonRequest(json, botToken, "getFile", requestBody)
@@ -116,7 +115,7 @@ class TelegramBotService {
 
         println("status code: " + response.statusCode());
         val body: InputStream = response.body()
-        body.copyTo(File(fileName).outputStream(), 16 * 1024)
+        body.use { it.copyTo(File(fileName).outputStream(), 16 * 1024) }
     }
 
     private fun sendJsonRequest(json: Json, botToken: String, method: String, requestBody: Any): String {
@@ -142,7 +141,6 @@ class TelegramBotService {
         return "Error"
     }
 }
-
 
 const val TELEGRAM_BOT_API = "https://api.telegram.org/bot"
 const val LEARN_WORDS_CALLBACK_DATA = "learn_words_clicked"

@@ -25,11 +25,11 @@ class LearnWordsTrainer(
     private val fileName: String = "words.txt",
 ) {
     private var question: Question? = null
-    val dictionary = loadDictionary()
+    val dictionary = loadDictionary(fileName)
 
     fun getCurrentQuestion(): Question? = question
 
-    fun loadDictionary(): MutableList<Word> {
+    fun loadDictionary(fileName: String): MutableList<Word> {
         val wordsFile = File(fileName)
 
         if (!wordsFile.exists()) {
