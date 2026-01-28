@@ -3,6 +3,7 @@ package org.example
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
 
 @Serializable
 data class Update(
@@ -21,11 +22,27 @@ data class Response(
 )
 
 @Serializable
+data class Document(
+    @SerialName("file_name")
+    val fileName: String,
+    @SerialName("mime_type")
+    val mimeType: String,
+    @SerialName("file_id")
+    val fileId: String,
+    @SerialName("file_unique_id")
+    val fileUniqueId: String,
+    @SerialName("file_size")
+    val fileSize: Long,
+)
+
+@Serializable
 data class Message(
     @SerialName("text")
     val text: String? = null,
     @SerialName("chat")
     val chat: Chat,
+    @SerialName("document")
+    val document: Document? = null,
 )
 
 @Serializable
@@ -40,6 +57,26 @@ data class CallbackQuery(
 data class Chat(
     @SerialName("id")
     val id: Long,
+)
+
+@Serializable
+data class GetFileResponse(
+    @SerialName("ok")
+    val ok: Boolean,
+    @SerialName("result")
+    val result: TelegramFile? = null,
+)
+
+@Serializable
+data class TelegramFile(
+    @SerialName("file_id")
+    val fileId: String,
+    @SerialName("file_unique_id")
+    val fileUniqueId: String,
+    @SerialName("file_size")
+    val fileSize: Long,
+    @SerialName("file_path")
+    val filePath: String,
 )
 
 fun main(args: Array<String>) {
@@ -73,8 +110,23 @@ fun handleUpdate(
     val message = update.message?.text
     val chatId: Long = update.message?.chat?.id ?: update.callbackQuery?.message?.chat?.id ?: return
     val data = update.callbackQuery?.data
+    val document = update.message?.document
 
     val trainer = trainers.getOrPut(chatId) { LearnWordsTrainer("$chatId.txt") }
+
+    if (document != null) {
+        val getFile = telegramBotService.getFile(json, botToken, document.fileId)
+        val response: GetFileResponse = json.decodeFromString(getFile)
+        val targetFile = File("${document.fileName}.${document.fileId}")
+        response.result?.let {
+            if (targetFile.exists()) {
+                telegramBotService.downloadFile(botToken, it.fileUniqueId, it.filePath)
+            } else {
+                val sendMessageResult = telegramBotService.sendMessage(json, botToken, chatId, "Такой файл уже есть!")
+                println(sendMessageResult)
+            }
+        }
+    }
 
     if (message == RESPONSE_TO_COMMAND_HELLO) {
         val sendMessageResult = telegramBotService.sendMessage(json, botToken, chatId, "Hello")

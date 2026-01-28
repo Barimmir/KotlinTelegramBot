@@ -116,21 +116,8 @@ class LearnWordsTrainer(
     }
 }
 
-fun Question.asConsoleString(): String {
-    println("\n${this.correctAnswer.original}:")
-    this.askAnswer.forEachIndexed { index, askInAnswer ->
-        println("${index + INCREASE_THE_INDEX_IN_THE_LIST} - $askInAnswer")
-    }
-    println(
-        "----------\n" +
-                "0 - Меню"
-    )
-    return String()
-}
-
 const val NEED_COUNT_TO_LEARN = 3
 const val MAX_PERCENTAGE = 100
 const val NUMBER_OF_WORDS_TO_LEARN = 4
-const val INCREASE_THE_INDEX_IN_THE_LIST = 1
 const val ZERO_TO_EXIT = 0
 

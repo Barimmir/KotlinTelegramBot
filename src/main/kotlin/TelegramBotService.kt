@@ -3,6 +3,8 @@ package org.example
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
+import java.io.InputStream
 import java.io.IOException
 import java.net.URI
 import java.net.http.HttpClient
@@ -31,6 +33,12 @@ data class InlineKeyboard(
     val callbackData: String,
     @SerialName("text")
     val text: String,
+)
+
+@Serializable
+data class GetFileRequest(
+    @SerialName("file_id")
+    val fileId: String,
 )
 
 class TelegramBotService {
@@ -87,7 +95,31 @@ class TelegramBotService {
         return sendJsonRequest(json, botToken, "sendMessage", requestBody)
     }
 
-    private fun sendJsonRequest(json: Json, botToken: String, method: String, requestBody: SendMessageRequest): String {
+
+    fun getFile(json: Json, botToken: String, fileId: String): String {
+        val requestBody = GetFileRequest(fileId)
+        return sendJsonRequest(json, botToken, "getFile", requestBody)
+    }
+
+    fun downloadFile(botToken: String, fileName: String, filePath: String) {
+        val urlGetFile = "$TELEGRAM_BOT_API$botToken/$filePath"
+        println(urlGetFile)
+        val request = HttpRequest
+            .newBuilder()
+            .uri(URI.create(urlGetFile))
+            .GET()
+            .build()
+
+        val response: HttpResponse<InputStream> = HttpClient
+            .newHttpClient()
+            .send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+        println("status code: " + response.statusCode());
+        val body: InputStream = response.body()
+        body.copyTo(File(fileName).outputStream(), 16 * 1024)
+    }
+
+    private fun sendJsonRequest(json: Json, botToken: String, method: String, requestBody: Any): String {
         val url = "$TELEGRAM_BOT_API$botToken/$method"
         val requestBodyString = json.encodeToString(requestBody)
         val request =
@@ -110,6 +142,7 @@ class TelegramBotService {
         return "Error"
     }
 }
+
 
 const val TELEGRAM_BOT_API = "https://api.telegram.org/bot"
 const val LEARN_WORDS_CALLBACK_DATA = "learn_words_clicked"
