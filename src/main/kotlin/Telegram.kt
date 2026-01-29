@@ -117,7 +117,7 @@ fun handleUpdate(
     if (document != null) {
         val getFile = telegramBotService.getFile(json, botToken, document.fileId)
         val response: GetFileResponse = json.decodeFromString(getFile)
-        val targetFile = File("${document.fileName}.${document.fileId}")
+        val targetFile = File(document.fileName)
         response.result?.let {
             if (!targetFile.exists()) {
                 telegramBotService.downloadFile(botToken, document.fileName, it.filePath)
@@ -127,6 +127,7 @@ fun handleUpdate(
             }
         }
         trainer.loadDictionary(document.fileName)
+        trainer.saveDictionary()
     }
 
     if (message == RESPONSE_TO_COMMAND_HELLO) {

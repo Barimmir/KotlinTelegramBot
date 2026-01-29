@@ -25,7 +25,7 @@ class LearnWordsTrainer(
     private val fileName: String = "words.txt",
 ) {
     private var question: Question? = null
-    val dictionary = loadDictionary(fileName)
+    var dictionary = loadDictionary(fileName)
 
     fun getCurrentQuestion(): Question? = question
 
