@@ -1,4 +1,4 @@
-hello|привет|0
-dog|собака|0
-cat|кошка|0
-thank you|спасибо|0
+hello|привет|0|
+dog|собака|0|photoClue/dog.jpg
+cat|кошка|0|photoClue/cat.jpeg
+thank you|спасибо|0|

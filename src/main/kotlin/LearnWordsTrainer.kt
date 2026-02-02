@@ -1,19 +1,24 @@
 package org.example
 
+import kotlinx.serialization.Serializable
 import java.io.File
 
+@Serializable
 data class Word(
     val original: String,
     val translation: String,
     var correctAnswersCount: Int,
+    val photoClue: String = "",
 )
 
+@Serializable
 data class Statistics(
     val totalCount: Int,
     val learnCount: Int,
     val percent: String,
 )
 
+@Serializable
 data class Question(
     val variants: List<Word>,
     val correctAnswer: Word,
@@ -46,7 +51,8 @@ class LearnWordsTrainer(
             val word = Word(
                 original = split[0].trim(),
                 translation = split[1].trim(),
-                correctAnswersCount = split[2].toIntOrNull() ?: ZERO_TO_EXIT
+                correctAnswersCount = split[2].toIntOrNull() ?: ZERO_TO_EXIT,
+                photoClue = split[3].trim(),
             )
             dictionary.add(word)
         }
@@ -57,7 +63,7 @@ class LearnWordsTrainer(
         val wordsFile = File(fileName)
         val lines = mutableListOf<String>()
         for (word in dictionary) {
-            lines.add("${word.original}|${word.translation}|${word.correctAnswersCount}")
+            lines.add("${word.original}|${word.translation}|${word.correctAnswersCount}|${word.photoClue}")
         }
         wordsFile.writeText(lines.joinToString("\n"))
     }
