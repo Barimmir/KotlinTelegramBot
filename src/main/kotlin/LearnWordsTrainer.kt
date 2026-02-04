@@ -9,6 +9,7 @@ data class Word(
     val translation: String,
     var correctAnswersCount: Int,
     val photoClue: String = "",
+    var photoFileId: String = ""
 )
 
 @Serializable
@@ -52,7 +53,8 @@ class LearnWordsTrainer(
                 original = split[0].trim(),
                 translation = split[1].trim(),
                 correctAnswersCount = split[2].toIntOrNull() ?: ZERO_TO_EXIT,
-                photoClue = split[3].trim(),
+                photoClue = split.getOrNull(3)?.trim() ?: "",
+                photoFileId = split.getOrNull(4)?.trim() ?: ""
             )
             dictionary.add(word)
         }

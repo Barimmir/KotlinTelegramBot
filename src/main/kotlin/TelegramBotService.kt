@@ -1,3 +1,5 @@
+@file:Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+
 package org.example
 
 import kotlinx.serialization.SerialName
@@ -46,8 +48,29 @@ data class GetFileRequest(
     val fileId: String,
 )
 
+@Serializable
+data class Photo(
+    @SerialName("file_id")
+    val fileId: String,
+    @SerialName("file_unique_id")
+    val fileUniqueId: String? = null,
+    @SerialName("file_size")
+    val fileSize: Long? = null,
+    @SerialName("width")
+    val width: Int? = null,
+    @SerialName("height")
+    val height: Int? = null,
+)
+
+@Serializable
+data class SendPhotoResponse(
+    @SerialName("photo")
+    val result: List<Photo>? = null,
+)
+
 class TelegramBotService {
     private val httpClient = HttpClient.newBuilder().build()
+    private val json = Json { ignoreUnknownKeys = true }
 
     fun getUpdates(botToken: String, updatesId: Long): String {
         val urlGetUpdates = "$TELEGRAM_BOT_API$botToken/getUpdates?offset=$updatesId"
@@ -79,7 +102,12 @@ class TelegramBotService {
         return sendJsonRequest(json, botToken, "sendMessage", requestBody)
     }
 
-    fun sendQuestion(json: Json, botToken: String, chatId: Long, question: Question): String {
+    fun sendQuestion(
+        json: Json,
+        botToken: String,
+        chatId: Long,
+        question: Question,
+    ): String {
         val answerButtons =
             question.askAnswer.mapIndexed { index, word ->
                 listOf(
@@ -92,19 +120,19 @@ class TelegramBotService {
         val allButtons = answerButtons.toMutableList()
         allButtons.add(listOf(InlineKeyboard(BACK_CALLBACK_DATA, "назад")))
         val replyMarkup = ReplyMarkup(allButtons)
+
+        val caption = "Выбери правильный перевод\n${question.correctAnswer.original}"
         val photoPath = question.correctAnswer.photoClue
+        if (question.correctAnswer.photoFileId.isNotEmpty()) {
+            return sendPhotoByFileId(json, botToken, chatId, question.correctAnswer.photoFileId, caption, replyMarkup)
+        }
         if (photoPath.isNotEmpty()) {
             val photoFile = File(photoPath)
-            if (!photoFile.exists()) {
-                return sendPhoto(photoFile, chatId, botToken)
+            if (photoFile.exists()) {
+                return sendPhoto(photoFile, chatId, botToken).toString()
             }
         }
-        val requestBody = SendMessageRequest(
-            chatId,
-            "Выбери правильный перевод" +
-                    "\n ${question.correctAnswer.original}",
-            replyMarkup,
-        )
+        val requestBody = SendMessageRequest(chatId, caption, replyMarkup)
         return sendJsonRequest(json, botToken, "sendMessage", requestBody)
     }
 
@@ -131,7 +159,7 @@ class TelegramBotService {
         body.use { it.copyTo(File(fileName).outputStream(), 16 * 1024) }
     }
 
-    fun sendPhoto(file: File, chatId: Long, botToken: String, hasSpoiler: Boolean = false): String {
+    fun sendPhoto(file: File, chatId: Long, botToken: String, hasSpoiler: Boolean = false): Pair<String?, String?> {
         val data: MutableMap<String, Any> = LinkedHashMap()
         data["chat_id"] = chatId.toString()
         data["photo"] = file
@@ -144,7 +172,36 @@ class TelegramBotService {
             .build()
         val client: HttpClient = HttpClient.newBuilder().build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        return response.body()
+        val responseBody = response.body()
+        val fileId = try {
+            val photoResponse = json.decodeFromString<SendPhotoResponse>(responseBody)
+            photoResponse.result?.firstOrNull()?.fileId
+        } catch (e: Exception) {
+            null
+        }
+
+        return Pair(responseBody, fileId)
+    }
+
+    private fun sendPhotoByFileId(
+        json: Json, botToken: String, chatId: Long, fileId: String,
+        caption: String, replyMarkup: ReplyMarkup
+    ): String {
+        val requestBody = mapOf(
+            "chat_id" to chatId,
+            "photo" to fileId,
+            "caption" to caption,
+            "reply_markup" to replyMarkup
+        )
+
+        val requestBodyString = json.encodeToString(requestBody)
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create("$TELEGRAM_BOT_API$botToken/sendPhoto"))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBodyString))
+            .build()
+
+        return handlingNetworkErrors(request)
     }
 
     private fun sendJsonRequest(json: Json, botToken: String, method: String, requestBody: Any): String {
@@ -179,8 +236,9 @@ private fun HttpRequest.Builder.postMultipartFormData(boundary: String, data: Ma
         byteArrays.add(separator)
         when (entry.value) {
             is File -> {
-                val file = entry.value as File
-                val path = Path.of(file.toURI())
+                val file = entry.value as? File
+                file?.readBytes()
+                val path = Path.of(file?.toURI())
                 val mimeType = Files.probeContentType(path)
                 byteArrays.add(
                     "\'${entry.key}\'; filename=\'${path.fileName}\'\r\nContent-Type: $mimeType\r\n\r\n".toByteArray(
