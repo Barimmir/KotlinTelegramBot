@@ -107,6 +107,7 @@ class TelegramBotService {
         botToken: String,
         chatId: Long,
         question: Question,
+        trainer: LearnWordsTrainer
     ): String {
         val answerButtons =
             question.askAnswer.mapIndexed { index, word ->
@@ -129,7 +130,13 @@ class TelegramBotService {
         if (photoPath.isNotEmpty()) {
             val photoFile = File(photoPath)
             if (photoFile.exists()) {
-                return sendPhoto(photoFile, chatId, botToken).toString()
+                val (fileId) = sendPhoto(photoFile, chatId, botToken)
+                fileId?.let {
+                    question.correctAnswer.photoFileId = it
+                    trainer.saveDictionary()
+                }
+                val requestBody = SendMessageRequest(chatId, caption, replyMarkup)
+                return sendJsonRequest(json, botToken, "sendMessage", requestBody)
             }
         }
         val requestBody = SendMessageRequest(chatId, caption, replyMarkup)
@@ -237,7 +244,6 @@ private fun HttpRequest.Builder.postMultipartFormData(boundary: String, data: Ma
         when (entry.value) {
             is File -> {
                 val file = entry.value as? File
-                file?.readBytes()
                 val path = Path.of(file?.toURI())
                 val mimeType = Files.probeContentType(path)
                 byteArrays.add(

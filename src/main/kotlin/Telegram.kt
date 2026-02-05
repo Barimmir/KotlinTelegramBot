@@ -190,7 +190,7 @@ fun checkNextQuestionAndSend(
 ): Question? {
     val question = trainer.getNextQuestion()
     if (question != null) {
-        telegramBotService.sendQuestion(json, botToken, chatId, question)
+        telegramBotService.sendQuestion(json, botToken, chatId, question, trainer)
     } else {
         telegramBotService.sendMessage(json, botToken, chatId, "Все слова выучены!")
     }
