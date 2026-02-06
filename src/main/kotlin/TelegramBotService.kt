@@ -130,13 +130,11 @@ class TelegramBotService {
         if (photoPath.isNotEmpty()) {
             val photoFile = File(photoPath)
             if (photoFile.exists()) {
-                val (fileId) = sendPhoto(photoFile, chatId, botToken)
+                val (_, fileId) = sendPhoto(photoFile, chatId, botToken)
                 fileId?.let {
                     question.correctAnswer.photoFileId = it
                     trainer.saveDictionary()
                 }
-                val requestBody = SendMessageRequest(chatId, caption, replyMarkup)
-                return sendJsonRequest(json, botToken, "sendMessage", requestBody)
             }
         }
         val requestBody = SendMessageRequest(chatId, caption, replyMarkup)
@@ -243,8 +241,8 @@ private fun HttpRequest.Builder.postMultipartFormData(boundary: String, data: Ma
         byteArrays.add(separator)
         when (entry.value) {
             is File -> {
-                val file = entry.value as? File
-                val path = Path.of(file?.toURI())
+                val file = entry.value as File
+                val path = Path.of(file.toURI())
                 val mimeType = Files.probeContentType(path)
                 byteArrays.add(
                     "\'${entry.key}\'; filename=\'${path.fileName}\'\r\nContent-Type: $mimeType\r\n\r\n".toByteArray(
