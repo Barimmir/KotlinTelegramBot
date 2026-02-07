@@ -65,7 +65,7 @@ class LearnWordsTrainer(
         val wordsFile = File(fileName)
         val lines = mutableListOf<String>()
         for (word in dictionary) {
-            lines.add("${word.original}|${word.translation}|${word.correctAnswersCount}|${word.photoClue}")
+            lines.add("${word.original}|${word.translation}|${word.correctAnswersCount}|${word.photoClue}|${word.photoFileId}")
         }
         wordsFile.writeText(lines.joinToString("\n"))
     }
