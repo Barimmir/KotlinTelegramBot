@@ -128,6 +128,9 @@ fun handleUpdate(
         }
         trainer.loadDictionary(document.fileName)
         trainer.saveDictionary()
+        val sendMessageResult =
+            telegramBotService.sendMessage(json, botToken, chatId, "Слова успешно добавлены в словарь")
+        println(sendMessageResult)
     }
 
     if (message == RESPONSE_TO_COMMAND_HELLO) {
@@ -187,7 +190,7 @@ fun checkNextQuestionAndSend(
 ): Question? {
     val question = trainer.getNextQuestion()
     if (question != null) {
-        telegramBotService.sendQuestion(json, botToken, chatId, question)
+        telegramBotService.sendQuestion(json, botToken, chatId, question, trainer)
     } else {
         telegramBotService.sendMessage(json, botToken, chatId, "Все слова выучены!")
     }
