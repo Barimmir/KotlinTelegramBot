@@ -15,8 +15,9 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.nio.file.Path
 import java.util.Random
+
+interface TelegramRequest
 
 @Serializable
 data class SendMessageRequest(
@@ -26,12 +27,12 @@ data class SendMessageRequest(
     val text: String,
     @SerialName("reply_markup")
     val replyMarkup: ReplyMarkup? = null,
-)
+) : TelegramRequest
 
 @Serializable
 data class ReplyMarkup(
     @SerialName("inline_keyboard")
-    val inlineKeyboard: List<List<InlineKeyboard>>
+    val inlineKeyboard: List<List<InlineKeyboard>>? = null,
 )
 
 @Serializable
@@ -46,7 +47,7 @@ data class InlineKeyboard(
 data class GetFileRequest(
     @SerialName("file_id")
     val fileId: String,
-)
+) : TelegramRequest
 
 @Serializable
 data class Photo(
@@ -68,9 +69,25 @@ data class SendPhotoResponse(
     val result: List<Photo>? = null,
 )
 
+@Serializable
+data class SendPhotoRequest(
+    @SerialName("chat_id")
+    val chatId: Long,
+    @SerialName("photo")
+    val photo: String,
+    @SerialName("caption")
+    val caption: String,
+    @SerialName("reply_markup")
+    val replyMarkup: ReplyMarkup? = null
+) : TelegramRequest
+
 class TelegramBotService {
     private val httpClient = HttpClient.newBuilder().build()
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    }
 
     fun getUpdates(botToken: String, updatesId: Long): String {
         val urlGetUpdates = "$TELEGRAM_BOT_API$botToken/getUpdates?offset=$updatesId"
@@ -78,14 +95,14 @@ class TelegramBotService {
         return handlingNetworkErrors(request)
     }
 
-    fun sendMessage(json: Json, botToken: String, chatId: Long, message: String): String {
+    fun sendMessage(botToken: String, chatId: Long, message: String): String {
         val requestBody = SendMessageRequest(
-            chatId, message,
+            chatId, message
         )
-        return sendJsonRequest(json, botToken, "sendMessage", requestBody)
+        return sendJsonRequest(botToken, "sendMessage", requestBody)
     }
 
-    fun sendMenuMessage(json: Json, botToken: String, chatId: Long): String {
+    fun sendMenuMessage(botToken: String, chatId: Long): String {
         val requestBody = SendMessageRequest(
             chatId, "Основное меню", ReplyMarkup(
                 listOf(
@@ -99,11 +116,10 @@ class TelegramBotService {
                 )
             )
         )
-        return sendJsonRequest(json, botToken, "sendMessage", requestBody)
+        return sendJsonRequest(botToken, "sendMessage", requestBody)
     }
 
     fun sendQuestion(
-        json: Json,
         botToken: String,
         chatId: Long,
         question: Question,
@@ -122,10 +138,10 @@ class TelegramBotService {
         allButtons.add(listOf(InlineKeyboard(BACK_CALLBACK_DATA, "назад")))
         val replyMarkup = ReplyMarkup(allButtons)
 
-        val caption = "Выбери правильный перевод\n${question.correctAnswer.original}"
+        val caption = "Выбери правильный перевод\n${question.correctAnswer.original}:"
         val photoPath = question.correctAnswer.photoClue
         if (question.correctAnswer.photoFileId.isNotEmpty()) {
-            return sendPhotoByFileId(json, botToken, chatId, question.correctAnswer.photoFileId, caption, replyMarkup)
+            return sendPhotoByFileId(botToken, chatId, question.correctAnswer.photoFileId, caption, replyMarkup)
         }
         if (photoPath.isNotEmpty()) {
             val photoFile = File(photoPath)
@@ -138,12 +154,12 @@ class TelegramBotService {
             }
         }
         val requestBody = SendMessageRequest(chatId, caption, replyMarkup)
-        return sendJsonRequest(json, botToken, "sendMessage", requestBody)
+        return sendJsonRequest(botToken, "sendMessage", requestBody)
     }
 
-    fun getFile(json: Json, botToken: String, fileId: String): String {
+    fun getFile(botToken: String, fileId: String): String {
         val requestBody = GetFileRequest(fileId)
-        return sendJsonRequest(json, botToken, "getFile", requestBody)
+        return sendJsonRequest(botToken, "getFile", requestBody)
     }
 
     fun downloadFile(botToken: String, fileName: String, filePath: String) {
@@ -168,50 +184,52 @@ class TelegramBotService {
         val data: MutableMap<String, Any> = LinkedHashMap()
         data["chat_id"] = chatId.toString()
         data["photo"] = file
-        data["has_spoiler"] = hasSpoiler
+        if (hasSpoiler) {
+            data["has_spoiler"] = "true"
+        }
+
         val boundary: String = BigInteger(35, Random()).toString()
 
         val request = HttpRequest.newBuilder()
             .uri(URI.create("$TELEGRAM_BOT_API$botToken/sendPhoto"))
-            .postMultipartFormData(boundary, data)
+            .header("Content-Type", "multipart/form-data; boundary=$boundary")
+            .POST(createMultipartBody(boundary, data))
             .build()
-        val client: HttpClient = HttpClient.newBuilder().build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        val responseBody = response.body()
-        val fileId = try {
-            val photoResponse = json.decodeFromString<SendPhotoResponse>(responseBody)
-            photoResponse.result?.firstOrNull()?.fileId
-        } catch (e: Exception) {
-            null
-        }
 
-        return Pair(responseBody, fileId)
+        val client: HttpClient = HttpClient.newBuilder().build()
+
+        try {
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            val responseBody = response.body()
+            val fileId = try {
+                val photoResponse = json.decodeFromString<SendPhotoResponse>(responseBody)
+                photoResponse.result?.firstOrNull()?.fileId
+            } catch (e: Exception) {
+                null
+            }
+
+            return Pair(responseBody, fileId)
+        } catch (e: Exception) {
+            return Pair(null, null)
+        }
     }
 
     private fun sendPhotoByFileId(
-        json: Json, botToken: String, chatId: Long, fileId: String,
+        botToken: String, chatId: Long, fileId: String,
         caption: String, replyMarkup: ReplyMarkup
     ): String {
-        val requestBody = mapOf(
-            "chat_id" to chatId,
-            "photo" to fileId,
-            "caption" to caption,
-            "reply_markup" to replyMarkup
-        )
-
-        val requestBodyString = json.encodeToString(requestBody)
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create("$TELEGRAM_BOT_API$botToken/sendPhoto"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(requestBodyString))
-            .build()
-
-        return handlingNetworkErrors(request)
+        val requestBody = SendPhotoRequest(chatId, fileId, caption, replyMarkup)
+        return sendJsonRequest(botToken, "sendPhoto", requestBody)
     }
 
-    private fun sendJsonRequest(json: Json, botToken: String, method: String, requestBody: Any): String {
+    private fun sendJsonRequest(botToken: String, method: String, requestBody: TelegramRequest): String {
         val url = "$TELEGRAM_BOT_API$botToken/$method"
-        val requestBodyString = json.encodeToString(requestBody)
+        val requestBodyString = when (requestBody) {
+            is SendMessageRequest -> json.encodeToString(requestBody)
+            is SendPhotoRequest -> json.encodeToString(requestBody)
+            is GetFileRequest -> json.encodeToString(requestBody)
+            else -> throw IllegalArgumentException("Unknown request body type: ${requestBody::class.simpleName}")
+        }
         val request =
             HttpRequest.newBuilder().uri(URI.create(url)).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBodyString)).build()
@@ -233,34 +251,39 @@ class TelegramBotService {
     }
 }
 
-private fun HttpRequest.Builder.postMultipartFormData(boundary: String, data: Map<String, Any>): HttpRequest.Builder {
+private fun createMultipartBody(boundary: String, data: Map<String, Any>): HttpRequest.BodyPublisher {
     val byteArrays = ArrayList<ByteArray>()
-    val separator = "--$boundary\r\nContent-Disposition: form-data; name=".toByteArray(StandardCharsets.UTF_8)
+    val separator = "--$boundary\r\n".toByteArray(StandardCharsets.UTF_8)
+    val newline = "\r\n".toByteArray(StandardCharsets.UTF_8)
 
-    for (entry in data.entries) {
+    for ((key, value) in data) {
         byteArrays.add(separator)
-        when (entry.value) {
+
+        when (value) {
             is File -> {
-                val file = entry.value as File
-                val path = Path.of(file.toURI())
-                val mimeType = Files.probeContentType(path)
-                byteArrays.add(
-                    "\'${entry.key}\'; filename=\'${path.fileName}\'\r\nContent-Type: $mimeType\r\n\r\n".toByteArray(
-                        StandardCharsets.UTF_8
-                    )
-                )
-                byteArrays.add(Files.readAllBytes(path))
-                byteArrays.add("\r\n".toByteArray(StandardCharsets.UTF_8))
+                val file = value
+                val filename = file.name
+                val mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
+
+                val header = "Content-Disposition: form-data; name=\"$key\"; filename=\"$filename\"\r\n" +
+                        "Content-Type: $mimeType\r\n\r\n"
+                byteArrays.add(header.toByteArray(StandardCharsets.UTF_8))
+                byteArrays.add(Files.readAllBytes(file.toPath()))
+                byteArrays.add(newline)
             }
 
-            else -> byteArrays.add("\'${entry.key}\'\r\n\r\n${entry.value}\r\n".toByteArray(StandardCharsets.UTF_8))
+            else -> {
+                val header = "Content-Disposition: form-data; name=\"$key\"\r\n\r\n"
+                byteArrays.add(header.toByteArray(StandardCharsets.UTF_8))
+                byteArrays.add(value.toString().toByteArray(StandardCharsets.UTF_8))
+                byteArrays.add(newline)
+            }
         }
     }
-    byteArrays.add("--$boundary--".toByteArray(StandardCharsets.UTF_8))
 
-    this.header("Content-Type", "multipart/form-data;boundary=$boundary")
-        .POST(HttpRequest.BodyPublishers.ofByteArrays(byteArrays))
-    return this
+    byteArrays.add("--${boundary}--".toByteArray(StandardCharsets.UTF_8))
+
+    return HttpRequest.BodyPublishers.ofByteArrays(byteArrays)
 }
 
 const val TELEGRAM_BOT_API = "https://api.telegram.org/bot"
