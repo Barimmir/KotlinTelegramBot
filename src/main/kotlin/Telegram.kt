@@ -93,9 +93,15 @@ fun main(args: Array<String>) {
         val response: Response = json.decodeFromString<Response>(responseString)
         if (response.result?.isEmpty() == true) continue
         val sortedUpdates = response.result?.sortedBy { it.updateId }
-        sortedUpdates?.forEach { handleUpdate(it, json, botToken, trainers, telegramBotService) }
+        sortedUpdates?.forEach { update ->
+            try {
+                handleUpdate(update, json, botToken, trainers, telegramBotService)
+            } catch (e: Exception) {
+                println("Ошибка обработки update ${update.updateId}: ${e.message}")
+                e.printStackTrace()
+            }
+        }
         sortedUpdates?.last()?.updateId?.let { lastUpdateId = it + INCREASE_UPDATE_ID }
-
     }
 }
 
@@ -122,15 +128,15 @@ fun handleUpdate(
             if (!targetFile.exists()) {
                 telegramBotService.downloadFile(botToken, document.fileName, it.filePath)
             } else {
-                val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, "Такой файл уже есть!")
-                println(sendMessageResult)
+                telegramBotService.sendMessage(botToken, chatId, "Такой файл уже есть!")
+                return@let
             }
-        }
-        trainer.loadDictionary(document.fileName)
-        trainer.saveDictionary()
-        val sendMessageResult =
+            trainer.loadDictionary(document.fileName)
+            trainer.saveDictionary()
             telegramBotService.sendMessage(botToken, chatId, "Слова успешно добавлены в словарь")
-        println(sendMessageResult)
+        } ?: run {
+            telegramBotService.sendMessage(botToken, chatId, "Ошибка загрузки файла")
+        }
     }
 
     if (message == RESPONSE_TO_COMMAND_HELLO) {
