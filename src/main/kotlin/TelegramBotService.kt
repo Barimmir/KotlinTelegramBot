@@ -81,6 +81,32 @@ data class SendPhotoRequest(
     val replyMarkup: ReplyMarkup? = null
 ) : TelegramRequest
 
+@Serializable
+data class EditMessageTextRequest(
+    @SerialName("chat_id")
+    val chatId: Long,
+    @SerialName("message_id")
+    val messageId: Long,
+    @SerialName("text")
+    val text: String,
+    @SerialName("reply_markup")
+    val replyMarkup: ReplyMarkup? = null
+) : TelegramRequest
+
+@Serializable
+data class SendMessageResponse(
+    @SerialName("ok")
+    val ok: Boolean,
+    @SerialName("result")
+    val result: MessageResult
+)
+
+@Serializable
+data class MessageResult(
+    @SerialName("message_id")
+    val messageId: Long
+)
+
 class TelegramBotService {
     private val httpClient = HttpClient.newBuilder().build()
     private val json = Json {
@@ -95,14 +121,33 @@ class TelegramBotService {
         return handlingNetworkErrors(request)
     }
 
-    fun sendMessage(botToken: String, chatId: Long, message: String): String {
-        val requestBody = SendMessageRequest(
-            chatId, message
+    fun editMessage(
+        botToken: String,
+        chatId: Long,
+        messageId: Long,
+        message: String,
+        replyMarkup: ReplyMarkup? = null
+    ): String {
+        val requestBody = EditMessageTextRequest(
+            chatId = chatId,
+            messageId = messageId,
+            text = message,
+            replyMarkup = replyMarkup
         )
-        return sendJsonRequest(botToken, "sendMessage", requestBody)
+        return sendJsonRequest(botToken, "editMessageText", requestBody)
     }
 
-    fun sendMenuMessage(botToken: String, chatId: Long): String {
+    fun sendMessage(botToken: String, chatId: Long, message: String): Long? {
+        val requestBody = SendMessageRequest(chatId, message)
+        val response = sendJsonRequest(botToken, "sendMessage", requestBody)
+        return try {
+            json.decodeFromString<SendMessageResponse>(response).result.messageId
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun sendMenuMessage(botToken: String, chatId: Long): Long? {
         val requestBody = SendMessageRequest(
             chatId, "Основное меню", ReplyMarkup(
                 listOf(
@@ -116,7 +161,12 @@ class TelegramBotService {
                 )
             )
         )
-        return sendJsonRequest(botToken, "sendMessage", requestBody)
+        val response = sendJsonRequest(botToken, "sendMessage", requestBody)
+        return try {
+            json.decodeFromString<SendMessageResponse>(response).result.messageId
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun sendQuestion(
@@ -173,9 +223,8 @@ class TelegramBotService {
 
         val response: HttpResponse<InputStream> = HttpClient
             .newHttpClient()
-            .send(request, HttpResponse.BodyHandlers.ofInputStream());
+            .send(request, HttpResponse.BodyHandlers.ofInputStream())
 
-        println("status code: " + response.statusCode());
         val body: InputStream = response.body()
         body.use { it.copyTo(File(fileName).outputStream(), 16 * 1024) }
     }
@@ -228,6 +277,7 @@ class TelegramBotService {
             is SendMessageRequest -> json.encodeToString(requestBody)
             is SendPhotoRequest -> json.encodeToString(requestBody)
             is GetFileRequest -> json.encodeToString(requestBody)
+            is EditMessageTextRequest -> json.encodeToString(requestBody)
             else -> throw IllegalArgumentException("Unknown request body type: ${requestBody::class.simpleName}")
         }
         val request =
