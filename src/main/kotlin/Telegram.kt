@@ -242,8 +242,15 @@ fun showStatistics(
     val lastMessageType = dynamicMessage.getLastMessageType(chatId)
 
     if (lastMessageId != null && lastMessageType != DynamicMessage.MessageType.STATISTICS) {
-        telegramBotService.editMessage(botToken, chatId, lastMessageId, text)
-        dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.STATISTICS)
+        val success = telegramBotService.editMessage(botToken, chatId, lastMessageId, text)
+        if (success) {
+            dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.STATISTICS)
+        } else {
+            val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
+            newMessageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.STATISTICS)
+            }
+        }
     } else {
         val messageId = telegramBotService.sendMessage(botToken, chatId, text)
         messageId?.let {
@@ -269,12 +276,18 @@ fun handleAnswer(
     } else {
         "❌ *Неправильно!*\n\n${currentQuestion?.correctAnswer?.original} — *${currentQuestion?.correctAnswer?.translation}*"
     }
-
     val lastMessageId = dynamicMessage.getLastMessageId(chatId)
     if (lastMessageId != null) {
-        telegramBotService.editMessage(botToken, chatId, lastMessageId, resultText)
-        dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.ANSWER_RESULT)
-        println("Показан результат ответа в сообщении $lastMessageId")
+        val success = telegramBotService.editMessage(botToken, chatId, lastMessageId, resultText)
+        if (success) {
+            dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.ANSWER_RESULT)
+            println("Показан результат ответа в сообщении $lastMessageId")
+        } else {
+            val newMessageId = telegramBotService.sendMessage(botToken, chatId, resultText)
+            newMessageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.ANSWER_RESULT)
+            }
+        }
         Thread.sleep(1500)
     }
     showStatistics(chatId, botToken, trainer, telegramBotService, dynamicMessage)
@@ -299,7 +312,7 @@ fun handleUndo(
                     listOf(InlineKeyboard(RESET_CALLBACK_DATA, "Сбросить статистику"))
                 )
                 val replyMarkup = ReplyMarkup(inlineKeyboard)
-                telegramBotService.editMessage(
+                val success = telegramBotService.editMessage(
                     botToken,
                     chatId,
                     previousMessage.messageId,
@@ -307,18 +320,37 @@ fun handleUndo(
                     "Markdown",
                     replyMarkup
                 )
-                dynamicMessage.addMessage(chatId, previousMessage.messageId, DynamicMessage.MessageType.MENU)
+                if (success) {
+                    dynamicMessage.addMessage(chatId, previousMessage.messageId, DynamicMessage.MessageType.MENU)
+                } else {
+                    val newMessageId = telegramBotService.sendMenuMessage(botToken, chatId)
+                    newMessageId?.let {
+                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
+                    }
+                }
             }
 
             DynamicMessage.MessageType.STATISTICS -> {
                 val text = "↩️ Возврат к предыдущему состоянию.\nНажми «Статистика» для просмотра."
-                telegramBotService.editMessage(botToken, chatId, previousMessage.messageId, text)
+                val success = telegramBotService.editMessage(botToken, chatId, previousMessage.messageId, text)
+                if (!success) {
+                    val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
+                    newMessageId?.let {
+                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.NONE)
+                    }
+                }
                 println("Откат к статистике для чата $chatId")
             }
 
             else -> {
                 val text = "↩️ Возврат к предыдущему сообщению"
-                telegramBotService.editMessage(botToken, chatId, previousMessage.messageId, text)
+                val success = telegramBotService.editMessage(botToken, chatId, previousMessage.messageId, text)
+                if (!success) {
+                    val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
+                    newMessageId?.let {
+                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.NONE)
+                    }
+                }
             }
         }
     } else {

@@ -156,15 +156,22 @@ class TelegramBotService {
         return try {
             val jsonResponse = json.decodeFromString<EditMessageResponse>(response)
 
-            if (jsonResponse.description?.contains("MESSAGE_NOT_MODIFIED") == true) {
-                true
-            } else if (jsonResponse.description?.contains("MESSAGE_ID_INVALID") == true) {
-                false
-            } else {
-                false
+            when {
+                jsonResponse.ok -> true
+                jsonResponse.description?.contains("MESSAGE_NOT_MODIFIED") == true -> {
+                    true
+                }
+
+                jsonResponse.description?.contains("message can't be edited") == true -> {
+                    false
+                }
+
+                else -> {
+                    false
+                }
             }
         } catch (e: Exception) {
-            println("Ошибка парсинга ответа: ${e.message}")
+            println("${e.message}")
             false
         }
     }
