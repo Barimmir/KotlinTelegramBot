@@ -291,7 +291,6 @@ fun handleUndo(
     if (previousMessage != null) {
         when (previousMessage.messageType) {
             DynamicMessage.MessageType.MENU -> {
-                // Восстанавливаем меню
                 val inlineKeyboard = listOf(
                     listOf(
                         InlineKeyboard(LEARN_WORDS_CALLBACK_DATA, "Изучать слова"),
@@ -305,6 +304,7 @@ fun handleUndo(
                     chatId,
                     previousMessage.messageId,
                     "Основное меню",
+                    "Markdown",
                     replyMarkup
                 )
                 dynamicMessage.addMessage(chatId, previousMessage.messageId, DynamicMessage.MessageType.MENU)

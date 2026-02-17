@@ -25,6 +25,8 @@ data class SendMessageRequest(
     val chatId: Long,
     @SerialName("text")
     val text: String,
+    @SerialName("parse_mode")
+    val parseMode: String? = null,
     @SerialName("reply_markup")
     val replyMarkup: ReplyMarkup? = null,
 ) : TelegramRequest
@@ -89,6 +91,8 @@ data class EditMessageTextRequest(
     val messageId: Long,
     @SerialName("text")
     val text: String,
+    @SerialName("parse_mode")
+    val parseMode: String? = null,
     @SerialName("reply_markup")
     val replyMarkup: ReplyMarkup? = null
 ) : TelegramRequest
@@ -105,6 +109,18 @@ data class SendMessageResponse(
 data class MessageResult(
     @SerialName("message_id")
     val messageId: Long
+)
+
+@Serializable
+data class EditMessageResponse(
+    @SerialName("ok")
+    val ok: Boolean,
+    @SerialName("result")
+    val result: MessageResult? = null,
+    @SerialName("error_code")
+    val errorCode: Int? = null,
+    @SerialName("description")
+    val description: String? = null
 )
 
 class TelegramBotService {
@@ -126,19 +142,43 @@ class TelegramBotService {
         chatId: Long,
         messageId: Long,
         message: String,
+        parseMode: String = "Markdown",
         replyMarkup: ReplyMarkup? = null
-    ): String {
+    ): Boolean {
         val requestBody = EditMessageTextRequest(
             chatId = chatId,
             messageId = messageId,
             text = message,
+            parseMode = parseMode,
             replyMarkup = replyMarkup
         )
-        return sendJsonRequest(botToken, "editMessageText", requestBody)
+        val response = sendJsonRequest(botToken, "editMessageText", requestBody)
+        return try {
+            val jsonResponse = json.decodeFromString<EditMessageResponse>(response)
+
+            if (jsonResponse.description?.contains("MESSAGE_NOT_MODIFIED") == true) {
+                true
+            } else if (jsonResponse.description?.contains("MESSAGE_ID_INVALID") == true) {
+                false
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            println("Ошибка парсинга ответа: ${e.message}")
+            false
+        }
     }
 
-    fun sendMessage(botToken: String, chatId: Long, message: String): Long? {
-        val requestBody = SendMessageRequest(chatId, message)
+
+    fun sendMessage(
+        botToken: String,
+        chatId: Long,
+        message: String,
+        parseMode: String = "Markdown",
+        replyMarkup: ReplyMarkup? = null
+    ): Long? {
+        val requestBody = SendMessageRequest(chatId, message, parseMode, replyMarkup)
+
         val response = sendJsonRequest(botToken, "sendMessage", requestBody)
         return try {
             json.decodeFromString<SendMessageResponse>(response).result.messageId
@@ -147,9 +187,9 @@ class TelegramBotService {
         }
     }
 
-    fun sendMenuMessage(botToken: String, chatId: Long): Long? {
+    fun sendMenuMessage(botToken: String, chatId: Long, parseMode: String = "Markdown"): Long? {
         val requestBody = SendMessageRequest(
-            chatId, "Основное меню", ReplyMarkup(
+            chatId, "Основное меню", parseMode, ReplyMarkup(
                 listOf(
                     listOf(
                         InlineKeyboard(LEARN_WORDS_CALLBACK_DATA, "Изучать слова"),
@@ -191,7 +231,13 @@ class TelegramBotService {
         val caption = "Выбери правильный перевод\n${question.correctAnswer.original}:"
         val photoPath = question.correctAnswer.photoClue
         if (question.correctAnswer.photoFileId.isNotEmpty()) {
-            return sendPhotoByFileId(botToken, chatId, question.correctAnswer.photoFileId, caption, replyMarkup)
+            return sendPhotoByFileId(
+                botToken,
+                chatId,
+                question.correctAnswer.photoFileId,
+                caption,
+                replyMarkup
+            )
         }
         if (photoPath.isNotEmpty()) {
             val photoFile = File(photoPath)
@@ -203,7 +249,7 @@ class TelegramBotService {
                 }
             }
         }
-        val requestBody = SendMessageRequest(chatId, caption, replyMarkup)
+        val requestBody = SendMessageRequest(chatId, caption, "Markdown", replyMarkup)
         return sendJsonRequest(botToken, "sendMessage", requestBody)
     }
 
@@ -229,7 +275,12 @@ class TelegramBotService {
         body.use { it.copyTo(File(fileName).outputStream(), 16 * 1024) }
     }
 
-    fun sendPhoto(file: File, chatId: Long, botToken: String, hasSpoiler: Boolean = false): Pair<String?, String?> {
+    fun sendPhoto(
+        file: File,
+        chatId: Long,
+        botToken: String,
+        hasSpoiler: Boolean = false
+    ): Pair<String?, String?> {
         val data: MutableMap<String, Any> = LinkedHashMap()
         data["chat_id"] = chatId.toString()
         data["photo"] = file
