@@ -85,6 +85,7 @@ fun main(args: Array<String>) {
     val telegramBotService = TelegramBotService()
     val trainers = HashMap<Long, LearnWordsTrainer>()
     val json = Json { ignoreUnknownKeys = true }
+    val dynamicMessage = DynamicMessage()
 
     while (true) {
         Thread.sleep(2000)
@@ -95,7 +96,7 @@ fun main(args: Array<String>) {
         val sortedUpdates = response.result?.sortedBy { it.updateId }
         sortedUpdates?.forEach { update ->
             try {
-                handleUpdate(update, json, botToken, trainers, telegramBotService)
+                handleUpdate(update, json, botToken, trainers, telegramBotService, dynamicMessage)
             } catch (e: Exception) {
                 println("Ошибка обработки update ${update.updateId}: ${e.message}")
                 e.printStackTrace()
@@ -111,8 +112,8 @@ fun handleUpdate(
     botToken: String,
     trainers: HashMap<Long, LearnWordsTrainer>,
     telegramBotService: TelegramBotService,
+    dynamicMessage: DynamicMessage // Добавляем параметр
 ) {
-
     val message = update.message?.text
     val chatId: Long = update.message?.chat?.id ?: update.callbackQuery?.message?.chat?.id ?: return
     val data = update.callbackQuery?.data
@@ -121,69 +122,242 @@ fun handleUpdate(
     val trainer = trainers.getOrPut(chatId) { LearnWordsTrainer("$chatId.txt") }
 
     if (document != null) {
-        val getFile = telegramBotService.getFile(botToken, document.fileId)
-        val response: GetFileResponse = json.decodeFromString(getFile)
-        val targetFile = File(document.fileName)
-        response.result?.let {
-            if (!targetFile.exists()) {
-                telegramBotService.downloadFile(botToken, document.fileName, it.filePath)
-            } else {
-                telegramBotService.sendMessage(botToken, chatId, "Такой файл уже есть!")
-                return@let
-            }
-            trainer.loadDictionary(document.fileName)
-            trainer.saveDictionary()
-            telegramBotService.sendMessage(botToken, chatId, "Слова успешно добавлены в словарь")
-        } ?: run {
-            telegramBotService.sendMessage(botToken, chatId, "Ошибка загрузки файла")
-        }
+        handleDocument(chatId, document, botToken, json, telegramBotService, trainer, dynamicMessage)
+        return
     }
 
-    if (message == RESPONSE_TO_COMMAND_HELLO) {
-        val sendMessageResult = telegramBotService.sendMessage(botToken, chatId, "Hello")
-        println(sendMessageResult)
-    }
-    if (message == RESPONSE_TO_COMMAND_START) {
-        val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
-        println(sendMenu)
-    }
-    if (data == STATISTICS_CALLBACK_DATA) {
-        val statistics = trainer.getStatistics()
-        val sendStatistic =
-            telegramBotService.sendMessage(
-                botToken,
-                chatId,
-                "Выучено ${statistics.learnCount} из ${statistics.totalCount} слов | ${statistics.percent}%"
-            )
-        println(sendStatistic)
-    }
-    if (data == LEARN_WORDS_CALLBACK_DATA) {
-        checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken)
-    }
-    if (data?.startsWith(CALLBACK_DATA_ANSWER_PREFIX) == true) {
-        val userAnswerIndex = data.substringAfter(CALLBACK_DATA_ANSWER_PREFIX).toInt()
-        val resultAsk = trainer.checkAnswer(userAnswerIndex)
-        if (resultAsk) {
-            val messageWin = telegramBotService.sendMessage(botToken, chatId, "Правильно!")
-            println(messageWin)
-            checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken)
-        } else {
-            val messageLose = telegramBotService.sendMessage(
-                botToken,
-                chatId,
-                "Неправильно! ${trainer.getCurrentQuestion()?.correctAnswer?.original} - это ${trainer.getCurrentQuestion()?.correctAnswer?.translation}"
-            )
-            println(messageLose)
-            checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken)
+    when {
+        message == RESPONSE_TO_COMMAND_HELLO -> {
+            val messageId = telegramBotService.sendMenuMessage(botToken, chatId)
+            messageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
+            }
+        }
+
+        message == RESPONSE_TO_COMMAND_START -> {
+            val messageId = telegramBotService.sendMenuMessage(botToken, chatId)
+            messageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
+            }
+        }
+
+        message == RESPONSE_TO_COMMAND_UNDO -> {
+            handleUndo(chatId, botToken, telegramBotService, dynamicMessage)
+        }
+
+        data == STATISTICS_CALLBACK_DATA -> {
+            showStatistics(chatId, botToken, trainer, telegramBotService, dynamicMessage)
+        }
+
+        data == LEARN_WORDS_CALLBACK_DATA -> {
+            checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken, dynamicMessage)
+        }
+
+        data?.startsWith(CALLBACK_DATA_ANSWER_PREFIX) == true -> {
+            handleAnswer(chatId, data, trainer, botToken, telegramBotService, dynamicMessage)
+        }
+
+        data == BACK_CALLBACK_DATA -> {
+            val messageId = telegramBotService.sendMenuMessage(botToken, chatId)
+            messageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
+            }
+        }
+
+        data == RESET_CALLBACK_DATA -> {
+            trainer.resetProgress()
+            showStatistics(chatId, botToken, trainer, telegramBotService, dynamicMessage)
         }
     }
-    if (data == BACK_CALLBACK_DATA) {
-        val sendMenu = telegramBotService.sendMenuMessage(botToken, chatId)
-        println(sendMenu)
+}
+
+fun handleDocument(
+    chatId: Long,
+    document: Document,
+    botToken: String,
+    json: Json,
+    telegramBotService: TelegramBotService,
+    trainer: LearnWordsTrainer,
+    dynamicMessage: DynamicMessage
+) {
+    val getFile = telegramBotService.getFile(botToken, document.fileId)
+    val response: GetFileResponse = json.decodeFromString(getFile)
+    val targetFile = File(document.fileName)
+
+    response.result?.let {
+        if (!targetFile.exists()) {
+            telegramBotService.downloadFile(botToken, document.fileName, it.filePath)
+            trainer.loadDictionary(document.fileName)
+            trainer.saveDictionary()
+            val messageId = telegramBotService.sendMessage(botToken, chatId, "Слова успешно добавлены в словарь")
+            messageId?.let { msgId ->
+                dynamicMessage.addMessage(chatId, msgId, DynamicMessage.MessageType.WORD_LIST)
+            }
+        } else {
+            val messageId = telegramBotService.sendMessage(botToken, chatId, "Такой файл уже есть!")
+            messageId?.let { msgId ->
+                dynamicMessage.addMessage(chatId, msgId, DynamicMessage.MessageType.WORD_LIST)
+            }
+        }
+    } ?: run {
+        val messageId = telegramBotService.sendMessage(botToken, chatId, "Ошибка загрузки файла")
+        messageId?.let { msgId ->
+            dynamicMessage.addMessage(chatId, msgId, DynamicMessage.MessageType.WORD_LIST)
+        }
     }
-    if (data == RESET_CALLBACK_DATA) {
-        trainer.resetProgress()
-        telegramBotService.sendMessage(botToken, chatId, "Прогресс сброшен")
+}
+
+fun createProgressBar(percent: Int, length: Int = 10): String {
+    val filledCount = percent * length / 100
+    val emptyCount = length - filledCount
+    val filled = "█".repeat(filledCount)
+    val empty = "░".repeat(emptyCount)
+    return "$filled$empty $percent%"
+}
+
+fun showStatistics(
+    chatId: Long,
+    botToken: String,
+    trainer: LearnWordsTrainer,
+    telegramBotService: TelegramBotService,
+    dynamicMessage: DynamicMessage
+) {
+    val statistics = trainer.getStatistics()
+    val percent = statistics.percent.toIntOrNull() ?: 0
+    val progressBar = createProgressBar(percent)
+
+    val text = """
+        📊 *СТАТИСТИКА ИЗУЧЕНИЯ*
+        
+        $progressBar
+        
+        ✅ Выучено: *${statistics.learnCount}* из *${statistics.totalCount}* слов
+        📈 Прогресс: *$percent%*
+        
+        ─────────────────
+        Используй /undo для возврата
+    """.trimIndent()
+
+    val lastMessageId = dynamicMessage.getLastMessageId(chatId)
+    val lastMessageType = dynamicMessage.getLastMessageType(chatId)
+
+    if (lastMessageId != null && lastMessageType != DynamicMessage.MessageType.STATISTICS) {
+        val success = telegramBotService.editMessage(botToken, chatId, lastMessageId, text)
+        if (success) {
+            dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.STATISTICS)
+        } else {
+            val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
+            newMessageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.STATISTICS)
+            }
+        }
+    } else {
+        val messageId = telegramBotService.sendMessage(botToken, chatId, text)
+        messageId?.let {
+            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.STATISTICS)
+        }
+    }
+}
+
+fun handleAnswer(
+    chatId: Long,
+    data: String,
+    trainer: LearnWordsTrainer,
+    botToken: String,
+    telegramBotService: TelegramBotService,
+    dynamicMessage: DynamicMessage
+) {
+    val userAnswerIndex = data.substringAfter(CALLBACK_DATA_ANSWER_PREFIX).toInt()
+    val isCorrect = trainer.checkAnswer(userAnswerIndex)
+    val currentQuestion = trainer.getCurrentQuestion()
+
+    val resultText = if (isCorrect) {
+        "✅ *Правильно!*\n\n${currentQuestion?.correctAnswer?.original} — *${currentQuestion?.correctAnswer?.translation}*"
+    } else {
+        "❌ *Неправильно!*\n\n${currentQuestion?.correctAnswer?.original} — *${currentQuestion?.correctAnswer?.translation}*"
+    }
+    val lastMessageId = dynamicMessage.getLastMessageId(chatId)
+    if (lastMessageId != null) {
+        val success = telegramBotService.editMessage(botToken, chatId, lastMessageId, resultText)
+        if (success) {
+            dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.ANSWER_RESULT)
+            println("Показан результат ответа в сообщении $lastMessageId")
+        } else {
+            val newMessageId = telegramBotService.sendMessage(botToken, chatId, resultText)
+            newMessageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.ANSWER_RESULT)
+            }
+        }
+        Thread.sleep(1500)
+    }
+    showStatistics(chatId, botToken, trainer, telegramBotService, dynamicMessage)
+}
+
+fun handleUndo(
+    chatId: Long,
+    botToken: String,
+    telegramBotService: TelegramBotService,
+    dynamicMessage: DynamicMessage
+) {
+    val previousMessage = dynamicMessage.undo(chatId)
+
+    if (previousMessage != null) {
+        when (previousMessage.messageType) {
+            DynamicMessage.MessageType.MENU -> {
+                val inlineKeyboard = listOf(
+                    listOf(
+                        InlineKeyboard(LEARN_WORDS_CALLBACK_DATA, "Изучать слова"),
+                        InlineKeyboard(STATISTICS_CALLBACK_DATA, "Статистика")
+                    ),
+                    listOf(InlineKeyboard(RESET_CALLBACK_DATA, "Сбросить статистику"))
+                )
+                val replyMarkup = ReplyMarkup(inlineKeyboard)
+                val success = telegramBotService.editMessage(
+                    botToken,
+                    chatId,
+                    previousMessage.messageId,
+                    "Основное меню",
+                    "Markdown",
+                    replyMarkup
+                )
+                if (success) {
+                    dynamicMessage.addMessage(chatId, previousMessage.messageId, DynamicMessage.MessageType.MENU)
+                } else {
+                    val newMessageId = telegramBotService.sendMenuMessage(botToken, chatId)
+                    newMessageId?.let {
+                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
+                    }
+                }
+            }
+
+            DynamicMessage.MessageType.STATISTICS -> {
+                val text = "↩️ Возврат к предыдущему состоянию.\nНажми «Статистика» для просмотра."
+                val success = telegramBotService.editMessage(botToken, chatId, previousMessage.messageId, text)
+                if (!success) {
+                    val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
+                    newMessageId?.let {
+                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.NONE)
+                    }
+                }
+                println("Откат к статистике для чата $chatId")
+            }
+
+            else -> {
+                val text = "↩️ Возврат к предыдущему сообщению"
+                val success = telegramBotService.editMessage(botToken, chatId, previousMessage.messageId, text)
+                if (!success) {
+                    val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
+                    newMessageId?.let {
+                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.NONE)
+                    }
+                }
+            }
+        }
+    } else {
+        val messageId = telegramBotService.sendMessage(botToken, chatId, "⚠️ Нет предыдущего сообщения для отката")
+        messageId?.let {
+            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.NONE)
+        }
     }
 }
 
@@ -191,17 +365,25 @@ fun checkNextQuestionAndSend(
     trainer: LearnWordsTrainer,
     telegramBotService: TelegramBotService,
     chatId: Long,
-    botToken: String
+    botToken: String,
+    dynamicMessage: DynamicMessage
 ): Question? {
     val question = trainer.getNextQuestion()
+
     if (question != null) {
         telegramBotService.sendQuestion(botToken, chatId, question, trainer)
     } else {
-        telegramBotService.sendMessage(botToken, chatId, "Все слова выучены!")
+        val text = "🎉 *ПОЗДРАВЛЯЕМ!*\n\nВсе слова успешно выучены!"
+        val messageId = telegramBotService.sendMessage(botToken, chatId, text)
+        messageId?.let {
+            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.WORD_LIST)
+        }
     }
+
     return question
 }
 
 const val INCREASE_UPDATE_ID = 1
 const val RESPONSE_TO_COMMAND_HELLO = "Hello"
 const val RESPONSE_TO_COMMAND_START = "/start"
+const val RESPONSE_TO_COMMAND_UNDO = "/undo"

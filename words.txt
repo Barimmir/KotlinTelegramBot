@@ -1,4 +1,4 @@
 hello|привет|0||
-dog|собака|0|dog.jpg|
-cat|кошка|0|cat.jpeg|
+dog|собака|0|/root/dog.jpg|
+cat|кошка|0|root/cat.jpeg|
 thank you|спасибо|0||
