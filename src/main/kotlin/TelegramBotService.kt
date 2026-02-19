@@ -220,8 +220,7 @@ class TelegramBotService {
         botToken: String,
         chatId: Long,
         question: Question,
-        trainer: LearnWordsTrainer
-    ): String {
+    ): Long? {
         val answerButtons =
             question.askAnswer.mapIndexed { index, word ->
                 listOf(
@@ -234,30 +233,39 @@ class TelegramBotService {
         val allButtons = answerButtons.toMutableList()
         allButtons.add(listOf(InlineKeyboard(BACK_CALLBACK_DATA, "назад")))
         val replyMarkup = ReplyMarkup(allButtons)
-
         val caption = "Выбери правильный перевод\n${question.correctAnswer.original}:"
         val photoPath = question.correctAnswer.photoClue
         if (question.correctAnswer.photoFileId.isNotEmpty()) {
-            return sendPhotoByFileId(
-                botToken,
-                chatId,
-                question.correctAnswer.photoFileId,
-                caption,
-                replyMarkup
-            )
+            val response = sendPhotoByFileId(botToken, chatId, question.correctAnswer.photoFileId, caption, replyMarkup)
+            return try {
+                json.decodeFromString<SendMessageResponse>(response).result.messageId
+            } catch (e: Exception) {
+                null
+            }
         }
+
         if (photoPath.isNotEmpty()) {
             val photoFile = File(photoPath)
             if (photoFile.exists()) {
-                val (_, fileId) = sendPhoto(photoFile, chatId, botToken)
+                val (responseBody, fileId) = sendPhoto(photoFile, chatId, botToken)
                 fileId?.let {
                     question.correctAnswer.photoFileId = it
-                    trainer.saveDictionary()
+                }
+                return try {
+                    json.decodeFromString<SendMessageResponse>(responseBody ?: "").result.messageId
+                } catch (e: Exception) {
+                    null
                 }
             }
         }
+
         val requestBody = SendMessageRequest(chatId, caption, "Markdown", replyMarkup)
-        return sendJsonRequest(botToken, "sendMessage", requestBody)
+        val response = sendJsonRequest(botToken, "sendMessage", requestBody)
+        return try {
+            json.decodeFromString<SendMessageResponse>(response).result.messageId
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun getFile(botToken: String, fileId: String): String {

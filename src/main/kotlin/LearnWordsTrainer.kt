@@ -33,8 +33,6 @@ class LearnWordsTrainer(
     private var question: Question? = null
     var dictionary = loadDictionary(fileName)
 
-    fun getCurrentQuestion(): Question? = question
-
     fun loadDictionary(fileName: String): MutableList<Word> {
         val wordsFile = File(fileName)
 
