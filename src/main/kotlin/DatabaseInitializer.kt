@@ -2,9 +2,9 @@ package org.example
 
 import java.sql.DriverManager
 
-object Sample {
+object DatabaseInitializer {
     @JvmStatic
-    fun main(args: Array<String>) {
+    fun initializeDatabase() {
         DriverManager.getConnection("jdbc:sqlite:data.db").use { connection ->
             val statement = connection.createStatement()
             statement.executeUpdate("PRAGMA foreign_keys = ON")

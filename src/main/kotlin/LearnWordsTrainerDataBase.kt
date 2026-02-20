@@ -11,9 +11,9 @@ class LearnWordsTrainerDataBase(
 ) {
     private var question: Question? = null
 
-    fun updateDictionary(wordsFile: File) {
+    fun updateDictionary(wordsFile: File, dbUrl: String) {
         try {
-            DriverManager.getConnection("jdbc:sqlite:data.db").use { connection ->
+            DriverManager.getConnection(dbUrl).use { connection ->
                 val lines = wordsFile.readLines()
                 val statements =
                     connection.prepareStatement("INSERT OR IGNORE INTO words (text, translate) VALUES (?, ?)")

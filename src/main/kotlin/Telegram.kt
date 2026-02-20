@@ -80,6 +80,7 @@ data class TelegramFile(
 )
 
 fun main(args: Array<String>) {
+    DatabaseInitializer.initializeDatabase()
     val botToken = args[0]
     var lastUpdateId = 0L
     val telegramBotService = TelegramBotService()
@@ -190,7 +191,7 @@ fun handleDocument(
     response.result?.let {
         if (!targetFile.exists()) {
             telegramBotService.downloadFile(botToken, document.fileName, it.filePath)
-            trainer.updateDictionary(targetFile)
+            trainer.updateDictionary(targetFile, "jdbc:sqlite:data.db")
             val messageId = telegramBotService.sendMessage(botToken, chatId, "Слова успешно добавлены в словарь")
             messageId?.let { msgId ->
                 dynamicMessage.addMessage(chatId, msgId, DynamicMessage.MessageType.WORD_LIST)
