@@ -9,7 +9,7 @@ class LearnWordsTrainerDataBase(
 ) {
     private var question: Question? = null
 
-    fun updateDictionary(wordsFile: File, dbUrl: String) {
+    fun updateDictionary(wordsFile: File) {
         val words = mutableListOf<Pair<String, String>>()
         val lines = wordsFile.readLines()
         for (line in lines) {
@@ -18,7 +18,7 @@ class LearnWordsTrainerDataBase(
                 words.add(split[0].trim() to split[1].trim())
             }
         }
-        (userDictionary as? DatabaseUserDictionary)?.importWords(words)
+        userDictionary.importWords(words)
     }
 
     fun getCurrentQuestion(): Question? = question

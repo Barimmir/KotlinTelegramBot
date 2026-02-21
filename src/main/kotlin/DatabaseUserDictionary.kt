@@ -137,7 +137,7 @@ class DatabaseUserDictionary(
         }
     }
 
-    fun importWords(words: List<Pair<String, String>>) {
+    override fun importWords(words: List<Pair<String, String>>) {
         if (words.isEmpty()) return
         DriverManager.getConnection(dbUrl).use { connection ->
             try {

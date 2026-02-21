@@ -191,7 +191,7 @@ fun handleDocument(
     response.result?.let {
         if (!targetFile.exists()) {
             telegramBotService.downloadFile(botToken, document.fileName, it.filePath)
-            trainer.updateDictionary(targetFile, "jdbc:sqlite:data.db")
+            trainer.updateDictionary(targetFile)
             val messageId = telegramBotService.sendMessage(botToken, chatId, "Слова успешно добавлены в словарь")
             messageId?.let { msgId ->
                 dynamicMessage.addMessage(chatId, msgId, DynamicMessage.MessageType.WORD_LIST)
