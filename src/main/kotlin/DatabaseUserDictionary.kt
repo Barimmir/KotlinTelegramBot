@@ -8,8 +8,10 @@ class DatabaseUserDictionary(
     private val learningThreshold: Int = NEED_COUNT_TO_LEARN,
     private val dbUrl: String = "jdbc:sqlite:data.db",
 ) : IUserDictionary {
-    init {
+
+    private val userId: Int by lazy {
         ensureUserExists()
+        fetchUserIdFromDb()
     }
 
     private fun ensureUserExists() {
@@ -22,7 +24,7 @@ class DatabaseUserDictionary(
         }
     }
 
-    private fun getUserId(): Int {
+    private fun fetchUserIdFromDb(): Int {
         DriverManager.getConnection(dbUrl).use { connection ->
             val query = connection.prepareStatement("SELECT id FROM users WHERE chat_id = ?")
             query.setLong(1, chatId)
@@ -36,7 +38,6 @@ class DatabaseUserDictionary(
 
     override fun getNumOfLearnedWords(): Int {
         DriverManager.getConnection(dbUrl).use { connection ->
-            val userId = getUserId()
             val query = connection.prepareStatement(
                 """
                 SELECT COUNT(*) as count 
@@ -60,7 +61,6 @@ class DatabaseUserDictionary(
 
     override fun getLearnedWords(): List<Word> {
         DriverManager.getConnection(dbUrl).use { connection ->
-            val userId = getUserId()
             val query = connection.prepareStatement(
                 """
                 SELECT w.text, w.translate, ua.correct_answer_count
@@ -88,7 +88,6 @@ class DatabaseUserDictionary(
 
     override fun getUnlearnedWords(): List<Word> {
         DriverManager.getConnection(dbUrl).use { connection ->
-            val userId = getUserId()
             val query = connection.prepareStatement(
                 """
                 SELECT w.text, w.translate, COALESCE(ua.correct_answer_count, 0) as correct_count
@@ -116,7 +115,6 @@ class DatabaseUserDictionary(
 
     override fun setCorrectAnswersCount(word: String, correctAnswersCount: Int) {
         DriverManager.getConnection(dbUrl).use { connection ->
-            val userId = getUserId()
             val wordQuery = connection.prepareStatement("SELECT id FROM words WHERE text = ?")
             wordQuery.setString(1, word)
             val wordRs = wordQuery.executeQuery()
@@ -139,9 +137,32 @@ class DatabaseUserDictionary(
         }
     }
 
+    fun importWords(words: List<Pair<String, String>>) {
+        if (words.isEmpty()) return
+        DriverManager.getConnection(dbUrl).use { connection ->
+            try {
+                connection.autoCommit = false
+                val insertStatement = connection.prepareStatement(
+                    "INSERT OR IGNORE INTO words (text, translate) VALUES (?, ?)"
+                )
+                for ((original, translation) in words) {
+                    insertStatement.setString(1, original)
+                    insertStatement.setString(2, translation)
+                    insertStatement.addBatch()
+                }
+                insertStatement.executeBatch()
+                connection.commit()
+            } catch (e: SQLException) {
+                connection.rollback()
+                e.printStackTrace()
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
     override fun resetUserProgress() {
         DriverManager.getConnection(dbUrl).use { connection ->
-            val userId = getUserId()
             val deleteQuery = connection.prepareStatement("DELETE FROM user_answers WHERE user_id = ?")
             deleteQuery.setInt(1, userId)
             deleteQuery.executeUpdate()

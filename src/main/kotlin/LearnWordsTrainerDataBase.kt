@@ -1,9 +1,7 @@
 package org.example
 
 import java.io.File
-import java.sql.DriverManager
-import java.sql.SQLException
-import kotlin.use
+
 
 class LearnWordsTrainerDataBase(
     private val userDictionary: IUserDictionary,
@@ -12,25 +10,15 @@ class LearnWordsTrainerDataBase(
     private var question: Question? = null
 
     fun updateDictionary(wordsFile: File, dbUrl: String) {
-        try {
-            DriverManager.getConnection(dbUrl).use { connection ->
-                val lines = wordsFile.readLines()
-                val statements =
-                    connection.prepareStatement("INSERT OR IGNORE INTO words (text, translate) VALUES (?, ?)")
-                for (line in lines) {
-                    val split = line.split("|")
-                    if (split.size >= 2) {
-                        val original = split[0].trim()
-                        val translation = split[1].trim()
-                        statements.setString(1, original)
-                        statements.setString(2, translation)
-                        statements.executeUpdate()
-                    }
-                }
+        val words = mutableListOf<Pair<String, String>>()
+        val lines = wordsFile.readLines()
+        for (line in lines) {
+            val split = line.split("|")
+            if (split.size >= 2) {
+                words.add(split[0].trim() to split[1].trim())
             }
-        } catch (e: SQLException) {
-            println("ERROR: ${e.message}")
         }
+        (userDictionary as? DatabaseUserDictionary)?.importWords(words)
     }
 
     fun getCurrentQuestion(): Question? = question
