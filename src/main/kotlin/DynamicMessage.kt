@@ -12,6 +12,7 @@ class DynamicMessage {
     enum class MessageType {
         MENU,
         STATISTICS,
+        QUESTION,
         ANSWER_RESULT,
         WORD_LIST,
         NONE

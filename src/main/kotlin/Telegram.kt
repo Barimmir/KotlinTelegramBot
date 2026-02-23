@@ -80,10 +80,11 @@ data class TelegramFile(
 )
 
 fun main(args: Array<String>) {
+    DatabaseInitializer.initializeDatabase()
     val botToken = args[0]
     var lastUpdateId = 0L
     val telegramBotService = TelegramBotService()
-    val trainers = HashMap<Long, LearnWordsTrainer>()
+    val trainers = HashMap<Long, LearnWordsTrainerDataBase>()
     val json = Json { ignoreUnknownKeys = true }
     val dynamicMessage = DynamicMessage()
 
@@ -110,16 +111,19 @@ fun handleUpdate(
     update: Update,
     json: Json,
     botToken: String,
-    trainers: HashMap<Long, LearnWordsTrainer>,
+    trainers: HashMap<Long, LearnWordsTrainerDataBase>,
     telegramBotService: TelegramBotService,
-    dynamicMessage: DynamicMessage // Добавляем параметр
+    dynamicMessage: DynamicMessage
 ) {
     val message = update.message?.text
     val chatId: Long = update.message?.chat?.id ?: update.callbackQuery?.message?.chat?.id ?: return
     val data = update.callbackQuery?.data
     val document = update.message?.document
 
-    val trainer = trainers.getOrPut(chatId) { LearnWordsTrainer("$chatId.txt") }
+    val trainer = trainers.getOrPut(chatId) {
+        val userDictionary = DatabaseUserDictionary(chatId)
+        LearnWordsTrainerDataBase(userDictionary)
+    }
 
     if (document != null) {
         handleDocument(chatId, document, botToken, json, telegramBotService, trainer, dynamicMessage)
@@ -177,7 +181,7 @@ fun handleDocument(
     botToken: String,
     json: Json,
     telegramBotService: TelegramBotService,
-    trainer: LearnWordsTrainer,
+    trainer: LearnWordsTrainerDataBase,
     dynamicMessage: DynamicMessage
 ) {
     val getFile = telegramBotService.getFile(botToken, document.fileId)
@@ -187,8 +191,7 @@ fun handleDocument(
     response.result?.let {
         if (!targetFile.exists()) {
             telegramBotService.downloadFile(botToken, document.fileName, it.filePath)
-            trainer.loadDictionary(document.fileName)
-            trainer.saveDictionary()
+            trainer.updateDictionary(targetFile)
             val messageId = telegramBotService.sendMessage(botToken, chatId, "Слова успешно добавлены в словарь")
             messageId?.let { msgId ->
                 dynamicMessage.addMessage(chatId, msgId, DynamicMessage.MessageType.WORD_LIST)
@@ -218,7 +221,7 @@ fun createProgressBar(percent: Int, length: Int = 10): String {
 fun showStatistics(
     chatId: Long,
     botToken: String,
-    trainer: LearnWordsTrainer,
+    trainer: LearnWordsTrainerDataBase,
     telegramBotService: TelegramBotService,
     dynamicMessage: DynamicMessage
 ) {
@@ -262,7 +265,7 @@ fun showStatistics(
 fun handleAnswer(
     chatId: Long,
     data: String,
-    trainer: LearnWordsTrainer,
+    trainer: LearnWordsTrainerDataBase,
     botToken: String,
     telegramBotService: TelegramBotService,
     dynamicMessage: DynamicMessage
@@ -290,7 +293,7 @@ fun handleAnswer(
         }
         Thread.sleep(1500)
     }
-    showStatistics(chatId, botToken, trainer, telegramBotService, dynamicMessage)
+    checkNextQuestionAndSend(trainer, telegramBotService, chatId, botToken, dynamicMessage)
 }
 
 fun handleUndo(
@@ -362,16 +365,19 @@ fun handleUndo(
 }
 
 fun checkNextQuestionAndSend(
-    trainer: LearnWordsTrainer,
+    trainer: LearnWordsTrainerDataBase,
     telegramBotService: TelegramBotService,
     chatId: Long,
     botToken: String,
     dynamicMessage: DynamicMessage
 ): Question? {
     val question = trainer.getNextQuestion()
-
     if (question != null) {
-        telegramBotService.sendQuestion(botToken, chatId, question, trainer)
+        val messageId = telegramBotService.sendQuestion(botToken, chatId, question)
+        messageId?.let {
+            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.QUESTION)
+            println("Отправлен вопрос для чата $chatId (messageId: $it)")
+        }
     } else {
         val text = "🎉 *ПОЗДРАВЛЯЕМ!*\n\nВсе слова успешно выучены!"
         val messageId = telegramBotService.sendMessage(botToken, chatId, text)
@@ -379,7 +385,6 @@ fun checkNextQuestionAndSend(
             dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.WORD_LIST)
         }
     }
-
     return question
 }
 
