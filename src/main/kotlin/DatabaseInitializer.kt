@@ -12,7 +12,7 @@ object DatabaseInitializer {
                 """
                       CREATE TABLE IF NOT EXISTS "words" (
                           "id" integer PRIMARY KEY AUTOINCREMENT,
-                          "text" varchar,
+                          "text" varchar UNIQUE, 
                           "translate" varchar
                       );
               """.trimIndent()

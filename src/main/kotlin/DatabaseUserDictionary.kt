@@ -14,6 +14,12 @@ class DatabaseUserDictionary(
         fetchUserIdFromDb()
     }
 
+    private val suspiciousPatterns = listOf(
+        "'", "\"", ";", "--", "/*", "*/",
+        "union", "select", "drop", "delete", "insert", "update",
+        "exec", "execute", "xp_cmdshell", "shutdown"
+    )
+
     private fun ensureUserExists() {
         DriverManager.getConnection(dbUrl).use { connection ->
             val insertUser = connection.prepareStatement(
@@ -33,6 +39,23 @@ class DatabaseUserDictionary(
                 return rs.getInt("id")
             }
             throw SQLException("Chat_id $chatId не найден")
+        }
+    }
+
+    private fun validateWord(word: String): String {
+        val allowedPattern = Regex("^[a-zA-Zа-яА-Я0-9\\s\\-']+$")
+        if (!allowedPattern.matches(word)) {
+            throw IllegalArgumentException("Недопустимые символы в слове: $word")
+        }
+        if (word.length > 50) {
+            throw IllegalArgumentException("Слово слишком длинное")
+        }
+        return word.trim()
+    }
+
+    private fun logSuspiciousActivity(input: String, context: String) {
+        val containsSuspicious = suspiciousPatterns.any {
+            input.lowercase().contains(it)
         }
     }
 
@@ -114,9 +137,11 @@ class DatabaseUserDictionary(
     }
 
     override fun setCorrectAnswersCount(word: String, correctAnswersCount: Int) {
+        logSuspiciousActivity(word, "setCorrectAnswersCount")
+        val validatedWord = validateWord(word)
         DriverManager.getConnection(dbUrl).use { connection ->
             val wordQuery = connection.prepareStatement("SELECT id FROM words WHERE text = ?")
-            wordQuery.setString(1, word)
+            wordQuery.setString(1, validatedWord)
             val wordRs = wordQuery.executeQuery()
             if (wordRs.next()) {
                 val wordId = wordRs.getInt("id")

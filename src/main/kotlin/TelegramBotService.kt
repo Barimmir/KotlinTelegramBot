@@ -274,18 +274,15 @@ class TelegramBotService {
     }
 
     fun downloadFile(botToken: String, fileName: String, filePath: String) {
-        val urlGetFile = "$TELEGRAM_BOT_API$botToken/$filePath"
-        println(urlGetFile)
+        val urlGetFile = "https://api.telegram.org/file/bot$botToken/$filePath"
         val request = HttpRequest
             .newBuilder()
             .uri(URI.create(urlGetFile))
             .GET()
             .build()
-
         val response: HttpResponse<InputStream> = HttpClient
             .newHttpClient()
             .send(request, HttpResponse.BodyHandlers.ofInputStream())
-
         val body: InputStream = response.body()
         body.use { it.copyTo(File(fileName).outputStream(), 16 * 1024) }
     }
