@@ -61,7 +61,7 @@ class DatabaseUserDictionary(
             input.lowercase().contains(it)
         }
         if (containsSuspicious) {
-            println("Что-то странное вводит это чипушила")
+            println("[SECURITY]Suspicious input detected in $context: $input")
         }
     }
 
