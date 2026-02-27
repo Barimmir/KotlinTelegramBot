@@ -8,31 +8,60 @@ class DatabaseUserDictionary(
     private val learningThreshold: Int = NEED_COUNT_TO_LEARN,
     private val dbUrl: String = "jdbc:sqlite:data.db",
 ) : IUserDictionary {
-
-    private val userId: Int by lazy {
-        ensureUserExists()
-        fetchUserIdFromDb()
-    }
-
-    private fun ensureUserExists() {
-        DriverManager.getConnection(dbUrl).use { connection ->
+    private val userId: Int = run {
+        val conn = DriverManager.getConnection(dbUrl)
+        conn.use { connection ->
             val insertUser = connection.prepareStatement(
                 "INSERT OR IGNORE INTO users (chat_id) VALUES (?)"
             )
             insertUser.setLong(1, chatId)
             insertUser.executeUpdate()
-        }
-    }
-
-    private fun fetchUserIdFromDb(): Int {
-        DriverManager.getConnection(dbUrl).use { connection ->
             val query = connection.prepareStatement("SELECT id FROM users WHERE chat_id = ?")
             query.setLong(1, chatId)
             val rs = query.executeQuery()
             if (rs.next()) {
-                return rs.getInt("id")
+                rs.getInt("id")
+            } else {
+                throw SQLException("Chat_id $chatId не найден")
             }
-            throw SQLException("Chat_id $chatId не найден")
+        }
+    }
+
+    private val dangerousPatterns = listOf(
+        "'--", "';", "' OR", "' AND", "' UNION", "' SELECT",
+        "' DELETE", "' DROP", "' INSERT", "' UPDATE", "1=1",
+        "--", "/*", "*/", "xp_cmdshell", "exec", "execute"
+    )
+
+    private fun validateWord(word: String): String {
+        val trimmed = word.trim()
+        if (trimmed.length > 50) {
+            throw IllegalArgumentException("Слово слишком длинное: ${trimmed.length} символов")
+        }
+        if (trimmed.isEmpty()) {
+            throw IllegalArgumentException("Слово не может быть пустым")
+        }
+        val allowedPattern = Regex("^[a-zA-Zа-яА-Я0-9\\s]+(?:[-'][a-zA-Zа-яА-Я0-9\\s]+)*$")
+        if (!allowedPattern.matches(trimmed)) {
+            logSuspiciousActivity(trimmed, "validateWord")
+            throw IllegalArgumentException("Недопустимые символы в слове: $trimmed")
+        }
+        val lowerWord = trimmed.lowercase()
+        dangerousPatterns.forEach { pattern ->
+            if (lowerWord.contains(pattern)) {
+                logSuspiciousActivity(trimmed, "validateWord-dangerous")
+                throw IllegalArgumentException("Обнаружено опасное слово")
+            }
+        }
+        return trimmed
+    }
+
+    private fun logSuspiciousActivity(input: String, context: String) {
+        val containsSuspicious = dangerousPatterns.any {
+            input.lowercase().contains(it)
+        }
+        if (containsSuspicious) {
+            println("[SECURITY]Suspicious input detected in $context: $input")
         }
     }
 
@@ -54,7 +83,8 @@ class DatabaseUserDictionary(
 
     override fun getSize(): Int {
         DriverManager.getConnection(dbUrl).use { connection ->
-            val rs = connection.createStatement().executeQuery("SELECT COUNT(*) as count FROM words")
+            val query = connection.prepareStatement("SELECT COUNT(*) as count FROM words")
+            val rs = query.executeQuery()
             return if (rs.next()) rs.getInt("count") else 0
         }
     }
@@ -114,38 +144,52 @@ class DatabaseUserDictionary(
     }
 
     override fun setCorrectAnswersCount(word: String, correctAnswersCount: Int) {
+        logSuspiciousActivity(word, "setCorrectAnswersCount")
+        val validatedWord = validateWord(word)
         DriverManager.getConnection(dbUrl).use { connection ->
             val wordQuery = connection.prepareStatement("SELECT id FROM words WHERE text = ?")
-            wordQuery.setString(1, word)
+            wordQuery.setString(1, validatedWord)
             val wordRs = wordQuery.executeQuery()
             if (wordRs.next()) {
                 val wordId = wordRs.getInt("id")
-                val updateQuery = connection.prepareStatement(
+                val upsertQuery = connection.prepareStatement(
                     """
                     INSERT INTO user_answers (user_id, word_id, correct_answer_count, updated_at)
                     VALUES (?, ?, ?, CURRENT_TIMESTAMP)
                     ON CONFLICT(user_id, word_id) 
-                    DO UPDATE SET correct_answer_count = ?, updated_at = CURRENT_TIMESTAMP
+                    DO UPDATE SET correct_answer_count = excluded.correct_answer_count, 
+                                  updated_at = CURRENT_TIMESTAMP
                     """
                 )
-                updateQuery.setInt(1, userId)
-                updateQuery.setInt(2, wordId)
-                updateQuery.setInt(3, correctAnswersCount)
-                updateQuery.setInt(4, correctAnswersCount)
-                updateQuery.executeUpdate()
+                upsertQuery.setInt(1, userId)
+                upsertQuery.setInt(2, wordId)
+                upsertQuery.setInt(3, correctAnswersCount)
+                upsertQuery.executeUpdate()
             }
         }
     }
 
     override fun importWords(words: List<Pair<String, String>>) {
         if (words.isEmpty()) return
+        val validWords = words.filter { (original, translation) ->
+            try {
+                validateWord(original)
+                validateWord(translation)
+                true
+            } catch (e: IllegalArgumentException) {
+                logSuspiciousActivity(original, "importWords-filtered")
+                logSuspiciousActivity(translation, "importWords-filtered")
+                false
+            }
+        }
+        if (validWords.isEmpty()) return
         DriverManager.getConnection(dbUrl).use { connection ->
             try {
                 connection.autoCommit = false
                 val insertStatement = connection.prepareStatement(
                     "INSERT OR IGNORE INTO words (text, translate) VALUES (?, ?)"
                 )
-                for ((original, translation) in words) {
+                for ((original, translation) in validWords) {
                     insertStatement.setString(1, original)
                     insertStatement.setString(2, translation)
                     insertStatement.addBatch()
@@ -154,7 +198,7 @@ class DatabaseUserDictionary(
                 connection.commit()
             } catch (e: SQLException) {
                 connection.rollback()
-                e.printStackTrace()
+                throw e
             } finally {
                 connection.autoCommit = true
             }

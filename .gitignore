@@ -44,3 +44,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# Удаляем все тестовые базы
+test_*.db
+test_security*.db
+*test*.db
