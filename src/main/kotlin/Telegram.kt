@@ -132,17 +132,11 @@ fun handleUpdate(
 
     when {
         message == RESPONSE_TO_COMMAND_HELLO -> {
-            val messageId = telegramBotService.sendMenuMessage(botToken, chatId)
-            messageId?.let {
-                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
-            }
+            showMenu(chatId, botToken, telegramBotService, dynamicMessage)
         }
 
         message == RESPONSE_TO_COMMAND_START -> {
-            val messageId = telegramBotService.sendMenuMessage(botToken, chatId)
-            messageId?.let {
-                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
-            }
+            showMenu(chatId, botToken, telegramBotService, dynamicMessage)
         }
 
         message == RESPONSE_TO_COMMAND_UNDO -> {
@@ -162,15 +156,12 @@ fun handleUpdate(
         }
 
         data == BACK_CALLBACK_DATA -> {
-            val messageId = telegramBotService.sendMenuMessage(botToken, chatId)
-            messageId?.let {
-                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
-            }
+            showMenu(chatId, botToken, telegramBotService, dynamicMessage)
         }
 
         data == RESET_CALLBACK_DATA -> {
             trainer.resetProgress()
-            showStatistics(chatId, botToken, trainer, telegramBotService, dynamicMessage)
+            showResetConfirmation(chatId, botToken, telegramBotService, dynamicMessage)
         }
     }
 }
@@ -202,12 +193,101 @@ fun handleDocument(
     }
 }
 
+fun showMenu(
+    chatId: Long,
+    botToken: String,
+    telegramBotService: TelegramBotService,
+    dynamicMessage: DynamicMessage
+) {
+    val inlineKeyboard = listOf(
+        listOf(
+            InlineKeyboard(LEARN_WORDS_CALLBACK_DATA, "Изучать слова"),
+            InlineKeyboard(STATISTICS_CALLBACK_DATA, "Статистика")
+        ),
+        listOf(InlineKeyboard(RESET_CALLBACK_DATA, "Сбросить статистику"))
+    )
+    val replyMarkup = ReplyMarkup(inlineKeyboard)
+    
+    val lastMessageId = dynamicMessage.getLastMessageId(chatId)
+    
+    if (lastMessageId != null) {
+        val success = telegramBotService.editMessage(
+            botToken,
+            chatId,
+            lastMessageId,
+            "Основное меню",
+            "Markdown",
+            replyMarkup
+        )
+        if (success) {
+            dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.MENU)
+        } else {
+            val newMessageId = telegramBotService.sendMenuMessage(botToken, chatId)
+            newMessageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
+            }
+        }
+    } else {
+        val messageId = telegramBotService.sendMenuMessage(botToken, chatId)
+        messageId?.let {
+            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
+        }
+    }
+}
+
 fun createProgressBar(percent: Int, length: Int = 10): String {
     val filledCount = percent * length / 100
     val emptyCount = length - filledCount
     val filled = "█".repeat(filledCount)
     val empty = "░".repeat(emptyCount)
     return "$filled$empty $percent%"
+}
+
+fun showResetConfirmation(
+    chatId: Long,
+    botToken: String,
+    telegramBotService: TelegramBotService,
+    dynamicMessage: DynamicMessage
+) {
+    val text = """
+        ✅ *СТАТИСТИКА СБРОШЕНА*
+        
+        Весь прогресс обучения был обнулён.
+        Теперь можно начать изучение слов заново!
+        
+        ─────────────────
+    """.trimIndent()
+
+    val inlineKeyboard = listOf(
+        listOf(InlineKeyboard(BACK_CALLBACK_DATA, "↩️ Назад"))
+    )
+    val replyMarkup = ReplyMarkup(inlineKeyboard)
+
+    val lastMessageId = dynamicMessage.getLastMessageId(chatId)
+
+    if (lastMessageId != null) {
+        val success = telegramBotService.editMessage(
+            botToken,
+            chatId,
+            lastMessageId,
+            text,
+            "Markdown",
+            replyMarkup
+        )
+        if (success) {
+            dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.STATISTICS)
+        } else {
+            val newMessageId = telegramBotService.sendMessage(botToken, chatId, text, "Markdown", replyMarkup)
+            newMessageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.STATISTICS)
+            }
+        }
+    } else {
+        val messageId = telegramBotService.sendMessage(botToken, chatId, text, "Markdown", replyMarkup)
+        messageId?.let {
+            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.STATISTICS)
+        }
+    }
 }
 
 fun showStatistics(
@@ -230,24 +310,34 @@ fun showStatistics(
         📈 Прогресс: *$percent%*
         
         ─────────────────
-        Используй /undo для возврата
     """.trimIndent()
 
-    val lastMessageId = dynamicMessage.getLastMessageId(chatId)
-    val lastMessageType = dynamicMessage.getLastMessageType(chatId)
+    val inlineKeyboard = listOf(
+        listOf(InlineKeyboard(BACK_CALLBACK_DATA, "↩️ Назад"))
+    )
+    val replyMarkup = ReplyMarkup(inlineKeyboard)
 
-    if (lastMessageId != null && lastMessageType != DynamicMessage.MessageType.STATISTICS) {
-        val success = telegramBotService.editMessage(botToken, chatId, lastMessageId, text)
+    val lastMessageId = dynamicMessage.getLastMessageId(chatId)
+
+    if (lastMessageId != null) {
+        val success = telegramBotService.editMessage(
+            botToken,
+            chatId,
+            lastMessageId,
+            text,
+            "Markdown",
+            replyMarkup
+        )
         if (success) {
             dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.STATISTICS)
         } else {
-            val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
+            val newMessageId = telegramBotService.sendMessage(botToken, chatId, text, "Markdown", replyMarkup)
             newMessageId?.let {
                 dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.STATISTICS)
             }
         }
     } else {
-        val messageId = telegramBotService.sendMessage(botToken, chatId, text)
+        val messageId = telegramBotService.sendMessage(botToken, chatId, text, "Markdown", replyMarkup)
         messageId?.let {
             dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.STATISTICS)
         }
@@ -299,60 +389,19 @@ fun handleUndo(
     if (previousMessage != null) {
         when (previousMessage.messageType) {
             DynamicMessage.MessageType.MENU -> {
-                val inlineKeyboard = listOf(
-                    listOf(
-                        InlineKeyboard(LEARN_WORDS_CALLBACK_DATA, "Изучать слова"),
-                        InlineKeyboard(STATISTICS_CALLBACK_DATA, "Статистика")
-                    ),
-                    listOf(InlineKeyboard(RESET_CALLBACK_DATA, "Сбросить статистику"))
-                )
-                val replyMarkup = ReplyMarkup(inlineKeyboard)
-                val success = telegramBotService.editMessage(
-                    botToken,
-                    chatId,
-                    previousMessage.messageId,
-                    "Основное меню",
-                    "Markdown",
-                    replyMarkup
-                )
-                if (success) {
-                    dynamicMessage.addMessage(chatId, previousMessage.messageId, DynamicMessage.MessageType.MENU)
-                } else {
-                    val newMessageId = telegramBotService.sendMenuMessage(botToken, chatId)
-                    newMessageId?.let {
-                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.MENU)
-                    }
-                }
+                showMenu(chatId, botToken, telegramBotService, dynamicMessage)
             }
 
             DynamicMessage.MessageType.STATISTICS -> {
-                val text = "↩️ Возврат к предыдущему состоянию.\nНажми «Статистика» для просмотра."
-                val success = telegramBotService.editMessage(botToken, chatId, previousMessage.messageId, text)
-                if (!success) {
-                    val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
-                    newMessageId?.let {
-                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.NONE)
-                    }
-                }
-                println("Откат к статистике для чата $chatId")
+                showStatistics(chatId, botToken, LearnWordsTrainerDataBase(DatabaseUserDictionary(chatId)), telegramBotService, dynamicMessage)
             }
 
             else -> {
-                val text = "↩️ Возврат к предыдущему сообщению"
-                val success = telegramBotService.editMessage(botToken, chatId, previousMessage.messageId, text)
-                if (!success) {
-                    val newMessageId = telegramBotService.sendMessage(botToken, chatId, text)
-                    newMessageId?.let {
-                        dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.NONE)
-                    }
-                }
+                showMenu(chatId, botToken, telegramBotService, dynamicMessage)
             }
         }
     } else {
-        val messageId = telegramBotService.sendMessage(botToken, chatId, "⚠️ Нет предыдущего сообщения для отката")
-        messageId?.let {
-            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.NONE)
-        }
+        showMenu(chatId, botToken, telegramBotService, dynamicMessage)
     }
 }
 
@@ -364,17 +413,46 @@ fun checkNextQuestionAndSend(
     dynamicMessage: DynamicMessage
 ): Question? {
     val question = trainer.getNextQuestion()
+    val lastMessageId = dynamicMessage.getLastMessageId(chatId)
+    
     if (question != null) {
-        val messageId = telegramBotService.sendQuestion(botToken, chatId, question)
-        messageId?.let {
-            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.QUESTION)
-            println("Отправлен вопрос для чата $chatId (messageId: $it)")
+        if (lastMessageId != null) {
+            val messageId = telegramBotService.sendQuestion(botToken, chatId, question, lastMessageId)
+            if (messageId != null) {
+                dynamicMessage.addMessage(chatId, messageId, DynamicMessage.MessageType.QUESTION)
+                println("Отправлен вопрос для чата $chatId (messageId: $messageId)")
+            }
+        } else {
+            val messageId = telegramBotService.sendQuestion(botToken, chatId, question)
+            messageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.QUESTION)
+                println("Отправлен новый вопрос для чата $chatId (messageId: $it)")
+            }
         }
     } else {
         val text = "🎉 *ПОЗДРАВЛЯЕМ!*\n\nВсе слова успешно выучены!"
-        val messageId = telegramBotService.sendMessage(botToken, chatId, text)
-        messageId?.let {
-            dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.WORD_LIST)
+        val inlineKeyboard = listOf(
+            listOf(InlineKeyboard(BACK_CALLBACK_DATA, "↩️ Назад"))
+        )
+        val replyMarkup = ReplyMarkup(inlineKeyboard)
+        
+        if (lastMessageId != null) {
+            val success = telegramBotService.editMessage(
+                botToken,
+                chatId,
+                lastMessageId,
+                text,
+                "Markdown",
+                replyMarkup
+            )
+            if (success) {
+                dynamicMessage.addMessage(chatId, lastMessageId, DynamicMessage.MessageType.WORD_LIST)
+            }
+        } else {
+            val messageId = telegramBotService.sendMessage(botToken, chatId, text, "Markdown", replyMarkup)
+            messageId?.let {
+                dynamicMessage.addMessage(chatId, it, DynamicMessage.MessageType.WORD_LIST)
+            }
         }
     }
     return question

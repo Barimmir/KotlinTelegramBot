@@ -268,6 +268,30 @@ class TelegramBotService {
         }
     }
 
+    fun sendQuestion(
+        botToken: String,
+        chatId: Long,
+        question: Question,
+        messageId: Long
+    ): Long? {
+        val answerButtons =
+            question.askAnswer.mapIndexed { index, word ->
+                listOf(
+                    InlineKeyboard(
+                        "$CALLBACK_DATA_ANSWER_PREFIX$index",
+                        word
+                    )
+                )
+            }
+        val allButtons = answerButtons.toMutableList()
+        allButtons.add(listOf(InlineKeyboard(BACK_CALLBACK_DATA, "назад")))
+        val replyMarkup = ReplyMarkup(allButtons)
+        val caption = "Выбери правильный перевод\n${question.correctAnswer.original}:"
+        
+        val success = editMessage(botToken, chatId, messageId, caption, "Markdown", replyMarkup)
+        return if (success) messageId else null
+    }
+
     fun getFile(botToken: String, fileId: String): String {
         val requestBody = GetFileRequest(fileId)
         return sendJsonRequest(botToken, "getFile", requestBody)
